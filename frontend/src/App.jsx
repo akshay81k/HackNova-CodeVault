@@ -1,0 +1,77 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Pages
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import AdminDashboard from './pages/AdminDashboard';
+import OrganizerDashboard from './pages/OrganizerDashboard';
+import UserDashboard from './pages/UserDashboard';
+import EventsPage from './pages/EventsPage';
+import SubmitPage from './pages/SubmitPage';
+import VerifyPage from './pages/VerifyPage';
+import LandingPage from './pages/LandingPage';
+
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+};
+
+const DashboardRedirect = () => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'admin') return <Navigate to="/admin" replace />;
+  if (user.role === 'organizer') return <Navigate to="/organizer" replace />;
+  return <Navigate to="/user" replace />;
+};
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify" element={<VerifyPage />} />
+      <Route path="/events" element={<EventsPage />} />
+      <Route path="/dashboard" element={<DashboardRedirect />} />
+      <Route path="/admin" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/organizer" element={
+        <ProtectedRoute allowedRoles={['organizer', 'admin']}>
+          <OrganizerDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/user" element={
+        <ProtectedRoute allowedRoles={['user']}>
+          <UserDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/submit/:eventId" element={
+        <ProtectedRoute allowedRoles={['user']}>
+          <SubmitPage />
+        </ProtectedRoute>
+      } />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+
+export default App;
