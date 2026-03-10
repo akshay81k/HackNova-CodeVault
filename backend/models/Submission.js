@@ -11,6 +11,12 @@ const submissionSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  // The team identifier sent from the frontend (used for Solana memo payload)
+  teamId: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   teamName: {
     type: String,
     trim: true,
@@ -28,11 +34,26 @@ const submissionSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+
+  // Local download URL (served from /uploads)
+  fileUrl: {
+    type: String,
+    default: null
+  },
+
+  // SHA-256 hash of the entire uploaded file
   sha256Hash: {
     type: String,
     required: true,
     length: 64
   },
+
+  // SHA-256 hash of the extracted .git folder contents
+  gitHash: {
+    type: String,
+    default: null
+  },
+
   trustedTimestamp: {
     type: Date,
     required: true,
@@ -56,12 +77,32 @@ const submissionSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+
+  // Submission number for this team/event (1 = first, 2 = re-submission, etc.)
+  submissionNumber: {
+    type: Number,
+    default: 1
+  },
+
+  // ── Blockchain Anchoring (Solana Devnet) ───────────────────────────────────
+  blockchainTxId: {
+    type: String,
+    default: null
+  },
+  blockchainAnchored: {
+    type: Boolean,
+    default: false
+  },
+  blockchainError: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true
 });
 
-// One submission per user per event
-submissionSchema.index({ event: 1, submittedBy: 1 }, { unique: true });
+// NOTE: Removed unique compound index { event, submittedBy } to allow
+// multiple submissions per user per event (until deadline).
 
 module.exports = mongoose.model('Submission', submissionSchema);

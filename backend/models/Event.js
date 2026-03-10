@@ -34,6 +34,18 @@ const eventSchema = new mongoose.Schema({
   maxTeamSize: {
     type: Number,
     default: 5
+  },
+
+  // ── Participating Teams (from CSV/Excel upload) ─────────────────────────────
+  participatingTeams: [{
+    teamId: { type: String, trim: true },
+    teamName: { type: String, trim: true, default: '' }
+  }],
+
+  // Original filename of the uploaded teams CSV/Excel
+  teamsFileName: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

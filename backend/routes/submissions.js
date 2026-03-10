@@ -1,12 +1,13 @@
 const express = require('express');
-const multer = require('multer');
-const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
-const { v4: uuidv4 } = require('crypto');
-const Submission = require('../models/Submission');
-const Event = require('../models/Event');
+const multer  = require('multer');
+const crypto  = require('crypto');
+const path    = require('path');
+const fs      = require('fs');
+const Submission        = require('../models/Submission');
+const Event             = require('../models/Event');
 const { protect, authorize } = require('../middleware/auth');
+const { computeGitHash }     = require('../services/gitHasher');
+const { anchorHashOnSolana } = require('../services/solana');
 
 const router = express.Router();
 
@@ -28,11 +29,8 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Accept .zip files and any uploaded folder (multipart)
   const allowedExtensions = ['.zip', '.gz', '.tar', '.tar.gz'];
   const ext = path.extname(file.originalname).toLowerCase();
-  
-  // We accept zip or any file named .git related
   if (allowedExtensions.includes(ext) || file.originalname.includes('.git') || ext === '') {
     cb(null, true);
   } else {
@@ -46,13 +44,13 @@ const upload = multer({
   limits: { fileSize: 200 * 1024 * 1024 } // 200MB max
 });
 
-// Generate SHA-256 hash of a file
+// Generate SHA-256 hash of a file (stream-based)
 const hashFile = (filePath) => {
   return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
+    const hash   = crypto.createHash('sha256');
     const stream = fs.createReadStream(filePath);
     stream.on('data', (chunk) => hash.update(chunk));
-    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('end',  () => resolve(hash.digest('hex')));
     stream.on('error', reject);
   });
 };
@@ -68,65 +66,90 @@ const generateVerificationId = () => {
 };
 
 // @route   POST /api/submissions
-// @desc    Submit .git folder (as zip) for an event
+// @desc    Submit a ZIP for an event. Multiple submissions allowed until deadline.
+//          Each submission creates a new record with an incrementing submissionNumber.
+// @body    { eventId, teamId, teamName?, notes? }
 // @access  User (team leader)
 router.post('/', protect, authorize('user'), upload.single('gitFile'), async (req, res) => {
+  const filePath = req.file ? req.file.path : null;
+
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded. Please upload your .git folder as a ZIP.' });
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded. Please upload your full repository as a ZIP (including the .git folder).'
+      });
     }
 
-    const { eventId, teamName, notes } = req.body;
+    const { eventId, teamId, teamName, notes } = req.body;
 
     if (!eventId) {
-      // Remove uploaded file
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(filePath);
       return res.status(400).json({ success: false, message: 'Event ID is required.' });
     }
 
-    // Check event exists
+    if (!teamId) {
+      fs.unlinkSync(filePath);
+      return res.status(400).json({ success: false, message: 'teamId is required.' });
+    }
+
+    // Validate event
     const event = await Event.findById(eventId);
     if (!event) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(filePath);
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
-    // Check if event is still active
     if (!event.isActive) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(filePath);
       return res.status(400).json({ success: false, message: 'This event is no longer active.' });
     }
 
-    // Check deadline
     const now = new Date();
     const isBeforeDeadline = now <= event.deadline;
-
     if (!isBeforeDeadline) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(filePath);
       return res.status(400).json({
         success: false,
         message: `Submission deadline has passed. Deadline was: ${event.deadline.toISOString()}`
       });
     }
 
-    // Check if already submitted
-    const existing = await Submission.findOne({ event: eventId, submittedBy: req.user._id });
-    if (existing) {
-      fs.unlinkSync(req.file.path);
-      return res.status(409).json({
-        success: false,
-        message: 'You have already submitted for this event. Only one submission per team leader is allowed.'
-      });
+    // Count existing submissions for this user+event (for submissionNumber tracking)
+    const previousCount = await Submission.countDocuments({ event: eventId, submittedBy: req.user._id });
+    const submissionNumber = previousCount + 1;
+
+    // Step 1: SHA-256 of the raw uploaded file
+    const sha256Hash       = await hashFile(filePath);
+    const trustedTimestamp = now;
+    const timestampISO     = trustedTimestamp.toISOString();
+
+    // Step 2: Extract ZIP → find .git → hash it
+    let gitHash = null;
+    try {
+      gitHash = await computeGitHash(filePath);
+    } catch (gitErr) {
+      console.error('[Submission] .git hash failed (non-fatal):', gitErr.message);
     }
 
-    // Generate SHA-256 hash
-    const sha256Hash = await hashFile(req.file.path);
+    // Step 3: Anchor hash on Solana Devnet
+    let blockchainTxId     = null;
+    let blockchainAnchored = false;
+    let blockchainError    = null;
 
-    // Trust timestamp (server-side)
-    const trustedTimestamp = now;
-    const timestampISO = trustedTimestamp.toISOString();
+    try {
+      const hashToAnchor = gitHash || sha256Hash;
+      blockchainTxId     = await anchorHashOnSolana(teamId, hashToAnchor, trustedTimestamp);
+      blockchainAnchored = true;
+    } catch (chainErr) {
+      blockchainError = chainErr.message;
+      console.error('[Submission] Solana anchoring failed (non-fatal):', chainErr.message);
+    }
 
-    // Generate verification ID
+    // Step 4: Build local file URL (served via /uploads static route)
+    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+
+    // Step 5: Generate unique verification ID
     let verificationId;
     let unique = false;
     while (!unique) {
@@ -135,62 +158,82 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       if (!existingVid) unique = true;
     }
 
+    // Step 6: Save everything to MongoDB
     const submission = await Submission.create({
-      event: eventId,
+      event:     eventId,
       submittedBy: req.user._id,
-      teamName: teamName || req.user.name,
+      teamId,
+      teamName:  teamName || req.user.name,
       originalFileName: req.file.originalname,
-      storedFileName: req.file.filename,
-      fileSize: req.file.size,
+      storedFileName:   req.file.filename,
+      fileSize:  req.file.size,
+      fileUrl,
+
       sha256Hash,
+      gitHash,
+
       trustedTimestamp,
       timestampISO,
+
       verificationId,
       submittedBeforeDeadline: isBeforeDeadline,
-      notes: notes || ''
+      notes: notes || '',
+
+      submissionNumber,
+
+      blockchainTxId,
+      blockchainAnchored,
+      blockchainError,
     });
 
     await submission.populate([
-      { path: 'event', select: 'title deadline' },
-      { path: 'submittedBy', select: 'name email' }
+      { path: 'event',        select: 'title deadline' },
+      { path: 'submittedBy',  select: 'name email' }
     ]);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'Submission received and hashed successfully.',
+      message: submissionNumber === 1
+        ? 'Submission received, hashed, and anchored on the blockchain.'
+        : `Re-submission #${submissionNumber} received and anchored on the blockchain.`,
       submission: {
-        id: submission._id,
+        id:             submission._id,
         verificationId: submission.verificationId,
-        sha256Hash: submission.sha256Hash,
+        sha256Hash:     submission.sha256Hash,
+        gitHash:        submission.gitHash,
         trustedTimestamp: submission.timestampISO,
-        teamName: submission.teamName,
+        teamId:         submission.teamId,
+        teamName:       submission.teamName,
         originalFileName: submission.originalFileName,
-        fileSize: submission.fileSize,
-        event: submission.event,
+        fileSize:       submission.fileSize,
+        fileUrl:        submission.fileUrl,
+        submissionNumber: submission.submissionNumber,
+        blockchainTxId: submission.blockchainTxId,
+        blockchainAnchored: submission.blockchainAnchored,
+        blockchainError: submission.blockchainError,
+        solanaTxUrl: submission.blockchainTxId
+          ? `https://explorer.solana.com/tx/${submission.blockchainTxId}?cluster=devnet`
+          : null,
+        event:       submission.event,
         submittedBy: submission.submittedBy
       }
     });
   } catch (err) {
-    // Cleanup file on error
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    if (err.code === 11000) {
-      return res.status(409).json({ success: false, message: 'You have already submitted for this event.' });
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
     }
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // @route   GET /api/submissions/my
-// @desc    Get current user's submissions
+// @desc    Get current user's submissions (all events, all re-submissions)
 // @access  User
 router.get('/my', protect, async (req, res) => {
   try {
     const submissions = await Submission.find({ submittedBy: req.user._id })
       .populate('event', 'title deadline description')
       .sort({ createdAt: -1 });
-
     res.json({ success: true, submissions });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -205,7 +248,6 @@ router.get('/event/:eventId', protect, authorize('organizer', 'admin'), async (r
     const event = await Event.findById(req.params.eventId);
     if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
 
-    // Organizer can only see their own events
     if (req.user.role === 'organizer' && event.organizer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
@@ -229,7 +271,6 @@ router.get('/all', protect, authorize('admin'), async (req, res) => {
       .populate('event', 'title deadline')
       .populate('submittedBy', 'name email')
       .sort({ createdAt: -1 });
-
     res.json({ success: true, count: submissions.length, submissions });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -247,8 +288,8 @@ router.get('/:id', protect, async (req, res) => {
 
     if (!submission) return res.status(404).json({ success: false, message: 'Submission not found.' });
 
-    const isOwner = submission.submittedBy._id.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === 'admin';
+    const isOwner    = submission.submittedBy._id.toString() === req.user._id.toString();
+    const isAdmin    = req.user.role === 'admin';
     const isOrganizer = req.user.role === 'organizer' &&
       submission.event.organizer.toString() === req.user._id.toString();
 
