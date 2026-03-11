@@ -92,7 +92,7 @@ export default function EventsPage() {
                             const timeLeft = getTimeLeft(ev.deadline);
                             return (
                                 <div key={ev._id} className="event-card" onClick={() => {
-                                    if (user?.role === 'user' && !expired) navigate(`/submit/${ev._id}`);
+                                    if (user?.role === 'user' && !expired) navigate(`/event/${ev._id}`);
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <span className={`status-badge ${expired ? 'status-expired' : 'status-active'}`}>
@@ -118,8 +118,8 @@ export default function EventsPage() {
 
                                     {user?.role === 'user' && !expired && (
                                         <button className="btn btn-primary btn-full" style={{ marginTop: 4 }}
-                                            onClick={e => { e.stopPropagation(); navigate(`/submit/${ev._id}`); }}>
-                                            Submit Project <ArrowRight size={15} />
+                                            onClick={e => { e.stopPropagation(); navigate(`/event/${ev._id}`); }}>
+                                            View Event <ArrowRight size={15} />
                                         </button>
                                     )}
                                     {!user && (

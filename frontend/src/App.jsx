@@ -11,6 +11,7 @@ import EventsPage from './pages/EventsPage';
 import SubmitPage from './pages/SubmitPage';
 import VerifyPage from './pages/VerifyPage';
 import LandingPage from './pages/LandingPage';
+import EventDetailPage from './pages/EventDetailPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -57,6 +58,11 @@ function AppRoutes() {
       <Route path="/submit/:eventId" element={
         <ProtectedRoute allowedRoles={['user']}>
           <SubmitPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/event/:eventId" element={
+        <ProtectedRoute allowedRoles={['user']}>
+          <EventDetailPage />
         </ProtectedRoute>
       } />
       <Route path="*" element={<Navigate to="/" replace />} />

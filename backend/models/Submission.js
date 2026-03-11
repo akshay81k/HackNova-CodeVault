@@ -35,7 +35,14 @@ const submissionSchema = new mongoose.Schema({
     required: true
   },
 
-  // Local download URL (served from /uploads)
+  // S3 object key (e.g. "submissions/<eventId>/<teamId>/submission-xxx.zip")
+  // Used to generate pre-signed download URLs. Null if S3 upload failed.
+  s3Key: {
+    type: String,
+    default: null
+  },
+
+  // Public or local download URL. Falls back to local /uploads URL if S3 is unavailable.
   fileUrl: {
     type: String,
     default: null

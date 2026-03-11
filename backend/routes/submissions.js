@@ -8,16 +8,17 @@ const Event             = require('../models/Event');
 const { protect, authorize } = require('../middleware/auth');
 const { computeGitHash }     = require('../services/gitHasher');
 const { anchorHashOnSolana } = require('../services/solana');
+const { uploadFileToS3, getSignedDownloadUrl } = require('../services/s3');
 
 const router = express.Router();
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists (used as temp staging area before S3)
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Multer storage config
+// Multer storage config — disk storage (temp, cleaned up after S3 upload)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadsDir);
@@ -65,11 +66,20 @@ const generateVerificationId = () => {
   return id;
 };
 
+// Helper: safely delete a local file
+const safeUnlink = (filePath) => {
+  try {
+    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (_) {}
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // @route   POST /api/submissions
-// @desc    Submit a ZIP for an event. Multiple submissions allowed until deadline.
-//          Each submission creates a new record with an incrementing submissionNumber.
+// @desc    Submit a ZIP for an event. After hashing the file is uploaded to S3.
+//          The S3 key is stored in MongoDB; the local temp file is removed.
 // @body    { eventId, teamId, teamName?, notes? }
 // @access  User (team leader)
+// ─────────────────────────────────────────────────────────────────────────────
 router.post('/', protect, authorize('user'), upload.single('gitFile'), async (req, res) => {
   const filePath = req.file ? req.file.path : null;
 
@@ -84,31 +94,31 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
     const { eventId, teamId, teamName, notes } = req.body;
 
     if (!eventId) {
-      fs.unlinkSync(filePath);
+      safeUnlink(filePath);
       return res.status(400).json({ success: false, message: 'Event ID is required.' });
     }
 
     if (!teamId) {
-      fs.unlinkSync(filePath);
+      safeUnlink(filePath);
       return res.status(400).json({ success: false, message: 'teamId is required.' });
     }
 
     // Validate event
     const event = await Event.findById(eventId);
     if (!event) {
-      fs.unlinkSync(filePath);
+      safeUnlink(filePath);
       return res.status(404).json({ success: false, message: 'Event not found.' });
     }
 
     if (!event.isActive) {
-      fs.unlinkSync(filePath);
+      safeUnlink(filePath);
       return res.status(400).json({ success: false, message: 'This event is no longer active.' });
     }
 
     const now = new Date();
     const isBeforeDeadline = now <= event.deadline;
     if (!isBeforeDeadline) {
-      fs.unlinkSync(filePath);
+      safeUnlink(filePath);
       return res.status(400).json({
         success: false,
         message: `Submission deadline has passed. Deadline was: ${event.deadline.toISOString()}`
@@ -146,8 +156,26 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       console.error('[Submission] Solana anchoring failed (non-fatal):', chainErr.message);
     }
 
-    // Step 4: Build local file URL (served via /uploads static route)
-    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    // Step 4: Upload file to AWS S3
+    let fileUrl = null;
+    let s3Key   = null;
+    let s3UploadError = null;
+
+    try {
+      // Key format: submissions/<eventId>/<teamId>/<filename>
+      s3Key   = `submissions/${eventId}/${teamId}/${req.file.filename}`;
+      fileUrl = await uploadFileToS3(filePath, s3Key, 'application/zip');
+    } catch (s3Err) {
+      s3UploadError = s3Err.message;
+      console.error('[Submission] S3 upload failed (non-fatal):', s3Err.message);
+      // Fall back: store local URL so the submission is still usable
+      fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    }
+
+    // Remove local temp file after S3 upload (whether successful or not)
+    if (s3Key && !s3UploadError) {
+      safeUnlink(filePath);
+    }
 
     // Step 5: Generate unique verification ID
     let verificationId;
@@ -168,6 +196,7 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       storedFileName:   req.file.filename,
       fileSize:  req.file.size,
       fileUrl,
+      s3Key,
 
       sha256Hash,
       gitHash,
@@ -207,6 +236,7 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
         originalFileName: submission.originalFileName,
         fileSize:       submission.fileSize,
         fileUrl:        submission.fileUrl,
+        s3Key:          submission.s3Key,
         submissionNumber: submission.submissionNumber,
         blockchainTxId: submission.blockchainTxId,
         blockchainAnchored: submission.blockchainAnchored,
@@ -219,16 +249,16 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       }
     });
   } catch (err) {
-    if (filePath && fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
+    safeUnlink(filePath);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @route   GET /api/submissions/my
 // @desc    Get current user's submissions (all events, all re-submissions)
 // @access  User
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/my', protect, async (req, res) => {
   try {
     const submissions = await Submission.find({ submittedBy: req.user._id })
@@ -240,9 +270,11 @@ router.get('/my', protect, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @route   GET /api/submissions/event/:eventId
 // @desc    Get all submissions for an event
 // @access  Organizer (own events), Admin
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/event/:eventId', protect, authorize('organizer', 'admin'), async (req, res) => {
   try {
     const event = await Event.findById(req.params.eventId);
@@ -262,9 +294,11 @@ router.get('/event/:eventId', protect, authorize('organizer', 'admin'), async (r
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @route   GET /api/submissions/all
 // @desc    Get all submissions (Admin)
 // @access  Admin
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/all', protect, authorize('admin'), async (req, res) => {
   try {
     const submissions = await Submission.find()
@@ -277,9 +311,66 @@ router.get('/all', protect, authorize('admin'), async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// @route   GET /api/submissions/:id/download
+// @desc    Generate a pre-signed S3 download URL (valid for 5 minutes)
+//          Falls back to the stored fileUrl if no S3 key is present.
+// @access  Organizer of the event, Admin
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/:id/download', protect, authorize('organizer', 'admin'), async (req, res) => {
+  try {
+    const submission = await Submission.findById(req.params.id)
+      .populate('event', 'title organizer');
+
+    if (!submission) {
+      return res.status(404).json({ success: false, message: 'Submission not found.' });
+    }
+
+    // Organizer can only download from their own events
+    if (
+      req.user.role === 'organizer' &&
+      submission.event.organizer.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    // If we have an S3 key, generate a pre-signed link (5 minutes)
+    if (submission.s3Key) {
+      try {
+        const signedUrl = await getSignedDownloadUrl(submission.s3Key, 300);
+        return res.json({
+          success: true,
+          downloadUrl: signedUrl,
+          fileName: submission.originalFileName,
+          expiresInSeconds: 300,
+          source: 's3'
+        });
+      } catch (s3Err) {
+        console.error('[Download] Pre-sign failed, falling back to stored URL:', s3Err.message);
+      }
+    }
+
+    // Fall back to the stored file URL (local or public S3 URL)
+    if (submission.fileUrl) {
+      return res.json({
+        success: true,
+        downloadUrl: submission.fileUrl,
+        fileName: submission.originalFileName,
+        source: 'stored'
+      });
+    }
+
+    return res.status(404).json({ success: false, message: 'No download URL available for this submission.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // @route   GET /api/submissions/:id
 // @desc    Get single submission
 // @access  Owner, Organizer of event, Admin
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/:id', protect, async (req, res) => {
   try {
     const submission = await Submission.findById(req.params.id)

@@ -13,7 +13,7 @@ export default function SubmitPage() {
 
     const [event, setEvent] = useState(null);
     const [file, setFile] = useState(null);
-    const [teamName, setTeamName] = useState('');
+    const [teamId, setTeamId] = useState('');
     const [notes, setNotes] = useState('');
     const [dragging, setDragging] = useState(false);
 
@@ -31,7 +31,7 @@ export default function SubmitPage() {
         try {
             const { data } = await API.get(`/events/${eventId}`);
             setEvent(data.event);
-            setTeamName(user?.name || '');
+            setTeamId('');
         } catch (err) {
             setError('Event not found.');
         } finally {
@@ -65,7 +65,7 @@ export default function SubmitPage() {
             const formData = new FormData();
             formData.append('gitFile', file);
             formData.append('eventId', eventId);
-            formData.append('teamName', teamName);
+            formData.append('teamId', teamId);
             formData.append('notes', notes);
 
             // Simulate progress
@@ -180,7 +180,7 @@ export default function SubmitPage() {
                                 ['Submitted At', new Date(result.trustedTimestamp).toISOString(), false],
                                 ['File Name', result.originalFileName, false],
                                 ['File Size', formatBytes(result.fileSize), false],
-                                ['Team Name', result.teamName, false],
+                                ['Team ID', result.teamId, false],
                             ].map(([label, value, mono]) => (
                                 <div key={label} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
@@ -260,9 +260,9 @@ export default function SubmitPage() {
                         <div className="card" style={{ marginBottom: 20 }}>
                             <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 16 }}>👥 Team Info</div>
                             <div className="form-group">
-                                <label className="form-label">Team Name</label>
-                                <input type="text" className="form-input" placeholder="Team Alpha"
-                                    value={teamName} onChange={e => setTeamName(e.target.value)} required />
+                                <label className="form-label">Team ID</label>
+                                <input type="text" className="form-input" placeholder="e.g. TEAM-001"
+                                    value={teamId} onChange={e => setTeamId(e.target.value)} required />
                             </div>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="form-label">Notes (optional)</label>
