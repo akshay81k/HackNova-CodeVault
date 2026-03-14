@@ -32,9 +32,6 @@ frontend/node_modules/
 backend/.env
 .env.*
 
-# Solana wallet (contains private key — NEVER commit this!)
-backend/wallet.json
-
 # Uploaded files (large binaries, stored in S3)
 backend/uploads/
 
