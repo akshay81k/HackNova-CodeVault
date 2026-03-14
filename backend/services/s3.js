@@ -7,6 +7,7 @@
 
 const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { Upload } = require('@aws-sdk/lib-storage');
 const fs   = require('fs');
 const path = require('path');
 
@@ -16,12 +17,17 @@ const s3Client = new S3Client({
     accessKeyId:     process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
+  // Add a connection timeout to prevent indefinite hangs
+  requestHandler: {
+    connectionTimeout: 600000, // 10 minutes
+    socketTimeout: 600000,
+  }
 });
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET;
 
 /**
- * Upload a local file to S3.
+ * Upload a local file to S3 using Multi-part Upload for reliability.
  *
  * @param {string} localFilePath  - Absolute path to the local file
  * @param {string} s3Key          - Destination key (path) inside the S3 bucket
@@ -34,17 +40,26 @@ async function uploadFileToS3(localFilePath, s3Key, contentType = 'application/z
   }
 
   const fileStream = fs.createReadStream(localFilePath);
-  const fileSize   = fs.statSync(localFilePath).size;
 
-  const command = new PutObjectCommand({
-    Bucket:        BUCKET_NAME,
-    Key:           s3Key,
-    Body:          fileStream,
-    ContentType:   contentType,
-    ContentLength: fileSize,
+  const parallelUploads3 = new Upload({
+    client: s3Client,
+    params: {
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      Body: fileStream,
+      ContentType: contentType,
+    },
+    // Customize for efficiency (5MB chunks)
+    partSize: 5 * 1024 * 1024,
+    leavePartsOnError: false,
   });
 
-  await s3Client.send(command);
+  parallelUploads3.on('httpUploadProgress', (progress) => {
+    const percent = Math.round((progress.loaded / progress.total) * 100);
+    console.log(`[S3] Uploading ${s3Key}: ${percent}% (${progress.loaded}/${progress.total} bytes)`);
+  });
+
+  await parallelUploads3.done();
 
   // Build the canonical S3 URL
   const region = process.env.AWS_REGION || 'us-east-1';

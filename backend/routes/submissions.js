@@ -160,6 +160,7 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
     }
 
     // Step 4: Upload file to AWS S3
+    console.log(`[Submission] Starting S3 upload for team ${teamId}...`);
     let fileUrl = null;
     let s3Key   = null;
     let s3UploadError = null;
@@ -168,11 +169,13 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       // Key format: submissions/<eventId>/<teamId>/<filename>
       s3Key   = `submissions/${eventId}/${teamId}/${req.file.filename}`;
       fileUrl = await uploadFileToS3(filePath, s3Key, 'application/zip');
+      console.log(`[Submission] S3 upload successful. URL: ${fileUrl}`);
     } catch (s3Err) {
       s3UploadError = s3Err.message;
       console.error('[Submission] S3 upload failed (non-fatal):', s3Err.message);
       // Fall back: store local URL so the submission is still usable
       fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      console.log(`[Submission] Using local fallback URL: ${fileUrl}`);
     }
 
     // Remove local temp file after S3 upload (whether successful or not)
@@ -190,6 +193,7 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
     }
 
     // Step 6: Save everything to MongoDB
+    console.log(`[Submission] Saving record to MongoDB for team ${teamId}...`);
     const submission = await Submission.create({
       event:     eventId,
       submittedBy: req.user._id,
@@ -217,6 +221,7 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       blockchainAnchored,
       blockchainError,
     });
+    console.log(`[Submission] MongoDB record created: ${submission._id}`);
 
     await submission.populate([
       { path: 'event',        select: 'title deadline' },
@@ -252,6 +257,8 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       }
     });
   } catch (err) {
+    console.error(`[Submission] CRITICAL ERROR: ${err.message}`);
+    console.error(err.stack);
     safeUnlink(filePath);
     res.status(500).json({ success: false, message: err.message });
   }
