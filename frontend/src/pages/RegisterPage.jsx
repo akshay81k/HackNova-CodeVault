@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import gsap from 'gsap';
 
 export default function RegisterPage() {
     const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user', organization: '' });
@@ -11,6 +12,35 @@ export default function RegisterPage() {
 
     const { register } = useAuth();
     const navigate = useNavigate();
+
+    const boxRef = useRef(null);
+    const fieldsRef = useRef(null);
+
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            gsap.from(boxRef.current, {
+                y: 40,
+                opacity: 0,
+                scale: 0.95,
+                duration: 0.7,
+                ease: 'power3.out',
+            });
+
+            const fields = fieldsRef.current?.children;
+            if (fields?.length) {
+                gsap.from(fields, {
+                    y: 20,
+                    opacity: 0,
+                    stagger: 0.08,
+                    duration: 0.5,
+                    delay: 0.3,
+                    ease: 'power2.out',
+                });
+            }
+        });
+
+        return () => ctx.revert();
+    }, []);
 
     const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -35,7 +65,23 @@ export default function RegisterPage() {
 
     return (
         <div className="auth-page">
-            <div className="auth-box">
+            {/* Animated background orbs */}
+            <div style={{
+                position: 'absolute', top: '15%', right: '20%',
+                width: 280, height: 280, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(139,92,246,0.07), transparent 70%)',
+                animation: 'hero-glow-pulse 9s ease-in-out infinite',
+                pointerEvents: 'none',
+            }} />
+            <div style={{
+                position: 'absolute', bottom: '15%', left: '10%',
+                width: 220, height: 220, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(37,99,235,0.06), transparent 70%)',
+                animation: 'hero-glow-pulse 11s ease-in-out infinite 3s',
+                pointerEvents: 'none',
+            }} />
+
+            <div className="auth-box" ref={boxRef} style={{ animation: 'none' }}>
                 <div className="auth-logo">
                     <div className="auth-logo-icon">🛡️</div>
                     <div>
@@ -49,7 +95,7 @@ export default function RegisterPage() {
 
                 {error && <div className="alert alert-error">⚠️ {error}</div>}
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} ref={fieldsRef}>
                     <div className="form-group">
                         <label className="form-label">Full Name</label>
                         <input id="reg-name" type="text" name="name" className="form-input" placeholder="Jane Doe"

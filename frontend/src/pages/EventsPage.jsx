@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import API from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Search, Clock, Users, ArrowRight } from 'lucide-react';
+import gsap from 'gsap';
 
 export default function EventsPage() {
     const [events, setEvents] = useState([]);
@@ -13,9 +14,48 @@ export default function EventsPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
 
+    const headerRef = useRef(null);
+    const filtersRef = useRef(null);
+    const gridRef = useRef(null);
+
     useEffect(() => {
         loadEvents();
     }, []);
+
+    // Animate header + filters on mount
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            gsap.from(headerRef.current, {
+                y: -20,
+                opacity: 0,
+                duration: 0.6,
+                ease: 'power3.out',
+            });
+            gsap.from(filtersRef.current, {
+                y: -10,
+                opacity: 0,
+                duration: 0.5,
+                delay: 0.2,
+                ease: 'power2.out',
+            });
+        });
+        return () => ctx.revert();
+    }, []);
+
+    // Animate cards when data loads
+    useEffect(() => {
+        if (!loading && events.length > 0 && gridRef.current) {
+            const cards = gridRef.current.querySelectorAll('.event-card');
+            gsap.from(cards, {
+                y: 40,
+                opacity: 0,
+                scale: 0.95,
+                stagger: 0.08,
+                duration: 0.5,
+                ease: 'power2.out',
+            });
+        }
+    }, [loading, events]);
 
     const loadEvents = async () => {
         setLoading(true);
@@ -51,13 +91,13 @@ export default function EventsPage() {
         <div className="page-wrapper">
             <Navbar />
             <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
-                <div style={{ marginBottom: 32 }}>
+                <div ref={headerRef} style={{ marginBottom: 32 }}>
                     <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 8 }}>Hackathon Events</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Find events, submit your project before the deadline</p>
                 </div>
 
                 {/* Search + Filter */}
-                <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+                <div ref={filtersRef} style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
                     <div className="search-bar" style={{ flex: 1, minWidth: 240 }}>
                         <Search size={16} color="var(--text-muted)" />
                         <input
@@ -86,7 +126,7 @@ export default function EventsPage() {
                         <div className="empty-state-desc">Try a different search or filter</div>
                     </div>
                 ) : (
-                    <div className="events-grid">
+                    <div className="events-grid" ref={gridRef}>
                         {filtered.map(ev => {
                             const expired = ev.isExpired;
                             const timeLeft = getTimeLeft(ev.deadline);

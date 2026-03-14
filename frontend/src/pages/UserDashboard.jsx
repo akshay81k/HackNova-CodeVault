@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { FileText, Clock, CheckCircle, Search, ExternalLink } from 'lucide-react';
+import gsap from 'gsap';
 
 export default function UserDashboard() {
     const { user } = useAuth();
@@ -11,7 +12,76 @@ export default function UserDashboard() {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
+    const headerRef = useRef(null);
+    const statsRef = useRef(null);
+    const actionsRef = useRef(null);
+    const contentRef = useRef(null);
+
     useEffect(() => { loadSubmissions(); }, []);
+
+    // Animate page elements on mount
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            gsap.from(headerRef.current, {
+                y: -20,
+                opacity: 0,
+                duration: 0.6,
+                ease: 'power3.out',
+            });
+        });
+        return () => ctx.revert();
+    }, []);
+
+    // Animate stats after data loads
+    useEffect(() => {
+        if (!loading) {
+            if (statsRef.current) {
+                const statCards = statsRef.current.querySelectorAll('.stat-card');
+                gsap.from(statCards, {
+                    x: -30,
+                    opacity: 0,
+                    stagger: 0.1,
+                    duration: 0.5,
+                    ease: 'power2.out',
+                });
+
+                // Counter animation for stat values
+                statCards.forEach(card => {
+                    const valEl = card.querySelector('.stat-value');
+                    if (valEl) {
+                        const target = parseInt(valEl.textContent, 10);
+                        if (!isNaN(target) && target > 0) {
+                            gsap.from(valEl, {
+                                textContent: 0,
+                                duration: 1.2,
+                                ease: 'power2.out',
+                                snap: { textContent: 1 },
+                            });
+                        }
+                    }
+                });
+            }
+            if (actionsRef.current) {
+                gsap.from(actionsRef.current.children, {
+                    y: 15,
+                    opacity: 0,
+                    stagger: 0.08,
+                    duration: 0.4,
+                    delay: 0.2,
+                    ease: 'power2.out',
+                });
+            }
+            if (contentRef.current) {
+                gsap.from(contentRef.current, {
+                    y: 30,
+                    opacity: 0,
+                    duration: 0.6,
+                    delay: 0.3,
+                    ease: 'power2.out',
+                });
+            }
+        }
+    }, [loading]);
 
     const loadSubmissions = async () => {
         setLoading(true);
@@ -46,14 +116,14 @@ export default function UserDashboard() {
         <div className="dashboard">
             <Navbar />
             <div className="dashboard-main">
-                <div style={{ marginBottom: 32 }}>
+                <div ref={headerRef} style={{ marginBottom: 32 }}>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Team Leader Panel</div>
                     <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>My Submissions</h1>
                     <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>Track your hackathon submissions and verification IDs</p>
                 </div>
 
                 {/* Stats */}
-                <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                <div className="stats-grid" ref={statsRef} style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                     <div className="stat-card">
                         <div className="stat-icon" style={{ background: 'rgba(16,185,129,0.12)' }}><FileText size={20} color="var(--accent-green)" /></div>
                         <div className="stat-value">{submissions.length}</div>
@@ -72,7 +142,7 @@ export default function UserDashboard() {
                 </div>
 
                 {/* Quick Actions */}
-                <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+                <div ref={actionsRef} style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
                     <button className="btn btn-primary" onClick={() => navigate('/events')}>
                         <Search size={16} /> Browse Events
                     </button>
@@ -82,7 +152,7 @@ export default function UserDashboard() {
                 </div>
 
                 {/* Submissions grouped by event */}
-                <div className="card">
+                <div className="card" ref={contentRef}>
                     <div className="card-header">
                         <span className="card-title"><FileText size={18} /> My Submission History</span>
                     </div>

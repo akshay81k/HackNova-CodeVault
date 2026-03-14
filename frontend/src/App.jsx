@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import VaultLoader from './components/VaultLoader';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -77,8 +79,11 @@ function AppRoutes() {
 }
 
 function App() {
+  const [showLoader, setShowLoader] = useState(true);
+
   return (
     <AuthProvider>
+      {showLoader && <VaultLoader onComplete={() => setShowLoader(false)} />}
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>

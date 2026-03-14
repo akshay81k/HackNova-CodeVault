@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, Shield } from 'lucide-react';
+import gsap from 'gsap';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -13,13 +14,43 @@ export default function LoginPage() {
     const { login } = useAuth();
     const navigate = useNavigate();
 
+    const boxRef = useRef(null);
+    const fieldsRef = useRef(null);
+
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            // Auth box entrance
+            gsap.from(boxRef.current, {
+                y: 40,
+                opacity: 0,
+                scale: 0.95,
+                duration: 0.7,
+                ease: 'power3.out',
+            });
+
+            // Stagger form fields
+            const fields = fieldsRef.current?.children;
+            if (fields?.length) {
+                gsap.from(fields, {
+                    y: 20,
+                    opacity: 0,
+                    stagger: 0.08,
+                    duration: 0.5,
+                    delay: 0.3,
+                    ease: 'power2.out',
+                });
+            }
+        });
+
+        return () => ctx.revert();
+    }, []);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
             const data = await login(email, password);
-            // Redirect based on role
             if (data.user.role === 'admin') navigate('/admin');
             else if (data.user.role === 'organizer') navigate('/organizer');
             else navigate('/user');
@@ -32,7 +63,23 @@ export default function LoginPage() {
 
     return (
         <div className="auth-page">
-            <div className="auth-box">
+            {/* Animated background orbs */}
+            <div style={{
+                position: 'absolute', top: '10%', left: '20%',
+                width: 300, height: 300, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(37,99,235,0.08), transparent 70%)',
+                animation: 'hero-glow-pulse 8s ease-in-out infinite',
+                pointerEvents: 'none',
+            }} />
+            <div style={{
+                position: 'absolute', bottom: '10%', right: '15%',
+                width: 250, height: 250, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(6,182,212,0.06), transparent 70%)',
+                animation: 'hero-glow-pulse 10s ease-in-out infinite 2s',
+                pointerEvents: 'none',
+            }} />
+
+            <div className="auth-box" ref={boxRef} style={{ animation: 'none' }}>
                 <div className="auth-logo">
                     <div className="auth-logo-icon">🛡️</div>
                     <div>
@@ -46,7 +93,7 @@ export default function LoginPage() {
 
                 {error && <div className="alert alert-error">⚠️ {error}</div>}
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} ref={fieldsRef}>
                     <div className="form-group">
                         <label className="form-label">Email Address</label>
                         <input
