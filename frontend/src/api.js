@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API = axios.create({
   baseURL: 'http://localhost:5000/api',
-  timeout: 60000,
+  timeout: 300000, // 5 minutes for large plagiarism checks
 });
 
 // Attach JWT token to every request

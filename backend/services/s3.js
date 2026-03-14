@@ -73,4 +73,28 @@ async function getSignedDownloadUrl(s3Key, expiresInSecs = 300) {
   return getSignedUrl(s3Client, command, { expiresIn: expiresInSecs });
 }
 
-module.exports = { uploadFileToS3, getSignedDownloadUrl };
+/**
+ * Download a file from S3 and return its contents as a Buffer.
+ */
+async function downloadFileFromS3(s3Key) {
+  if (!BUCKET_NAME) {
+    throw new Error('AWS_S3_BUCKET environment variable is not set.');
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key:    s3Key,
+  });
+
+  const response = await s3Client.send(command);
+  
+  // Convert stream to Buffer
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    response.Body.on('data', (chunk) => chunks.push(chunk));
+    response.Body.on('end', () => resolve(Buffer.concat(chunks)));
+    response.Body.on('error', reject);
+  });
+}
+
+module.exports = { uploadFileToS3, getSignedDownloadUrl, downloadFileFromS3 };

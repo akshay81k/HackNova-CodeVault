@@ -48,9 +48,10 @@ const PORT = process.env.PORT || 5000;
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 HackNova API running on http://localhost:${PORT}`);
     });
+    server.timeout = 600000; // 10 minutes for long plagiarism checks
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err.message);

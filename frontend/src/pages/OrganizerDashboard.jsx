@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import {
     Plus, Calendar, FileText, X, ChevronDown,
     Upload, Users, Download, ExternalLink, Copy,
-    CheckCircle, Clock, AlertCircle, Shield
+    CheckCircle, Clock, AlertCircle, Shield, Search
 } from 'lucide-react';
 
 export default function OrganizerDashboard() {
+    const navigate = useNavigate();
     const [events, setEvents] = useState([]);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [submissions, setSubmissions] = useState([]);
@@ -264,6 +266,19 @@ export default function OrganizerDashboard() {
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                 <Download size={12} /> Download links are time-limited S3 pre-signed URLs (5 min)
                                             </div>
+                                            <button
+                                                className="btn btn-secondary btn-sm"
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: 5,
+                                                    background: 'rgba(139,92,246,0.1)',
+                                                    borderColor: 'rgba(139,92,246,0.3)',
+                                                    color: 'var(--accent-purple)',
+                                                    fontWeight: 600
+                                                }}
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/plagiarism/${ev._id}`); }}
+                                            >
+                                                <Search size={13} /> Check Plagiarism
+                                            </button>
                                         </div>
 
                                         {subLoading ? (

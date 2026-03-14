@@ -8,7 +8,10 @@ const Event             = require('../models/Event');
 const { protect, authorize } = require('../middleware/auth');
 const { computeGitHash }     = require('../services/gitHasher');
 const { anchorHashOnSolana } = require('../services/solana');
-const { uploadFileToS3, getSignedDownloadUrl } = require('../services/s3');
+const { uploadFileToS3, getSignedDownloadUrl, downloadFileFromS3 } = require('../services/s3');
+const { compareSubmissions } = require('../services/plagiarism');
+const https = require('https');
+const http  = require('http');
 
 const router = express.Router();
 
@@ -390,6 +393,145 @@ router.get('/:id', protect, async (req, res) => {
 
     res.json({ success: true, submission });
   } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @route   POST /api/submissions/compare
+// @desc    Compare two submissions for code similarity (plagiarism detection)
+// @body    { submissionIdA, submissionIdB }
+// @access  Organizer (own event), Admin
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Download a file from a URL and return it as a Buffer.
+ */
+function downloadToBuffer(url) {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith('https') ? https : http;
+    client.get(url, (res) => {
+      // Follow redirects
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return downloadToBuffer(res.headers.location).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) {
+        return reject(new Error(`Download failed with status ${res.statusCode}`));
+      }
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+/**
+ * Get a ZIP buffer for a submission — from S3 (pre-signed URL) or local uploads.
+ */
+async function getSubmissionZipBuffer(submission) {
+  console.log(`[Plagiarism] Fetching ZIP for ${submission.teamId}...`);
+  // Try S3 first
+  if (submission.s3Key) {
+    try {
+      console.log(`[Plagiarism] Attempting S3 download via SDK: ${submission.s3Key}`);
+      const buffer = await downloadFileFromS3(submission.s3Key);
+      console.log(`[Plagiarism] S3 download successful (${buffer.length} bytes)`);
+      return buffer;
+    } catch (err) {
+      console.warn('[Plagiarism] S3 download failed, trying local fallback:', err.message);
+    }
+  }
+
+  // Fallback: local file
+  const localPath = path.join(__dirname, '../uploads', submission.storedFileName);
+  console.log(`[Plagiarism] Checking local path: ${localPath}`);
+  if (fs.existsSync(localPath)) {
+    try {
+      const buffer = fs.readFileSync(localPath);
+      console.log(`[Plagiarism] Local read successful (${buffer.length} bytes)`);
+      return buffer;
+    } catch (err) {
+      console.error(`[Plagiarism] Local read failed: ${err.message}`);
+    }
+  }
+
+  console.error(`[Plagiarism] ZIP not found for submission ${submission._id}`);
+  throw new Error(`Cannot retrieve ZIP for submission ${submission._id} (${submission.teamName || submission.teamId})`);
+}
+
+router.post('/compare', protect, authorize('organizer', 'admin'), async (req, res) => {
+  try {
+    const { submissionIdA, submissionIdB } = req.body;
+
+    if (!submissionIdA || !submissionIdB) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both submissionIdA and submissionIdB are required.'
+      });
+    }
+
+    if (submissionIdA === submissionIdB) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot compare a submission with itself.'
+      });
+    }
+
+    // Fetch both submissions
+    const [subA, subB] = await Promise.all([
+      Submission.findById(submissionIdA).populate('event', 'title organizer'),
+      Submission.findById(submissionIdB).populate('event', 'title organizer'),
+    ]);
+
+    if (!subA || !subB) {
+      return res.status(404).json({
+        success: false,
+        message: `Submission not found: ${!subA ? submissionIdA : submissionIdB}`
+      });
+    }
+
+    // Verify both belong to the same event
+    if (subA.event._id.toString() !== subB.event._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both submissions must belong to the same event.'
+      });
+    }
+
+    // Organizer can only compare submissions from their own events
+    if (
+      req.user.role === 'organizer' &&
+      subA.event.organizer.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    console.log(`[Plagiarism] Comparing: "${subA.teamName}" (${subA.teamId}) vs "${subB.teamName}" (${subB.teamId})`);
+
+    // Download both ZIPs
+    console.log('[Plagiarism] Downloading ZIPs...');
+    const [zipBufferA, zipBufferB] = await Promise.all([
+      getSubmissionZipBuffer(subA),
+      getSubmissionZipBuffer(subB),
+    ]);
+
+    // Run comparison
+    console.log('[Plagiarism] ZIPs received, starting comparison engine...');
+    const result = await compareSubmissions(zipBufferA, zipBufferB);
+    console.log('[Plagiarism] Comparison complete!');
+
+    return res.json({
+      success: true,
+      comparison: {
+        teamA: { id: subA.teamId, name: subA.teamName, submissionId: subA._id },
+        teamB: { id: subB.teamId, name: subB.teamName, submissionId: subB._id },
+        eventTitle: subA.event.title,
+        ...result,
+      }
+    });
+  } catch (err) {
+    console.error('[Plagiarism] Error:', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });
