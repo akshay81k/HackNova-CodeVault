@@ -1,8 +1,26 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const axios = require('axios');
+const { OAuth2Client } = require('google-auth-library');
 
 const router = express.Router();
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'dummy');
+
+const verifyTurnstile = async (token) => {
+  if (!token) return false;
+  const secret = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
+  try {
+    const response = await axios.post('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      secret,
+      response: token
+    }, { headers: { 'Content-Type': 'application/json' } });
+    return response.data.success;
+  } catch (err) {
+    console.error('[Auth] Turnstile verification error:', err.message);
+    return false;
+  }
+};
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -13,10 +31,14 @@ const generateToken = (id) => {
 // @access  Public
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role, organization } = req.body;
+    const { name, email, password, role, organization, turnstileToken } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required.' });
+    }
+
+    if (!await verifyTurnstile(turnstileToken)) {
+      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
     }
 
     // Only allow organizer or user registration publicly
@@ -60,10 +82,14 @@ router.post('/register', async (req, res) => {
 // @access  Public
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, turnstileToken } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
+    }
+
+    if (!await verifyTurnstile(turnstileToken)) {
+      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
     }
 
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
@@ -144,6 +170,64 @@ router.post('/admin/create', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// @route   POST /api/auth/google
+// @desc    Login or register via Google Sign-In
+// @access  Public
+router.post('/google', async (req, res) => {
+  try {
+    const { googleToken, turnstileToken, role, organization } = req.body;
+
+    if (!await verifyTurnstile(turnstileToken)) {
+      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: googleToken,
+      audience: process.env.GOOGLE_CLIENT_ID || 'dummy',
+    }).catch(() => null);
+
+    if (!ticket) {
+      return res.status(401).json({ success: false, message: 'Invalid Google token.' });
+    }
+
+    const payload = ticket.getPayload();
+    let user = await User.findOne({ email: payload.email.toLowerCase() });
+
+    if (!user) {
+      const allowedRoles = ['organizer', 'user'];
+      const userRole = role && allowedRoles.includes(role) ? role : 'user';
+      // Create a random safe password for the auto-created account
+      const randomPass = require('crypto').randomBytes(12).toString('hex');
+      
+      user = await User.create({
+        name: payload.name,
+        email: payload.email,
+        password: randomPass,
+        role: userRole,
+        organization: organization || ''
+      });
+    }
+
+    const token = generateToken(user._id);
+    res.json({
+      success: true,
+      message: 'Google login successful.',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        organization: user.organization
+      }
+    });
+
+  } catch (err) {
+    console.error('[Auth] Google Auth Error:', err.message);
+    res.status(500).json({ success: false, message: 'Internal Server Error during Google Auth.' });
   }
 });
 

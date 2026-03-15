@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function RegisterPage() {
     const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user', organization: '' });
     const [showPass, setShowPass] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [turnstileToken, setTurnstileToken] = useState(null);
 
-    const { register } = useAuth();
+    const { register, googleAuth } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -20,14 +23,31 @@ export default function RegisterPage() {
         if (form.password.length < 6) {
             return setError('Password must be at least 6 characters.');
         }
+        if (!turnstileToken) return setError('Please complete the CAPTCHA first.');
         setLoading(true);
         try {
-            const data = await register(form);
+            const data = await register({ ...form, turnstileToken });
             if (data.user.role === 'admin') navigate('/admin');
             else if (data.user.role === 'organizer') navigate('/organizer');
             else navigate('/user');
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        if (!turnstileToken) return setError('Please complete the CAPTCHA first to use Google Sign-In.');
+        setError('');
+        setLoading(true);
+        try {
+            const data = await googleAuth(credentialResponse.credential, turnstileToken, form.role, form.organization);
+            if (data.user.role === 'admin') navigate('/admin');
+            else if (data.user.role === 'organizer') navigate('/organizer');
+            else navigate('/user');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Google Registration failed.');
         } finally {
             setLoading(false);
         }
@@ -100,6 +120,13 @@ export default function RegisterPage() {
                         </div>
                     </div>
 
+                    <div style={{ margin: '16px 0', display: 'flex', justifyContent: 'center' }}>
+                        <Turnstile
+                            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+                            onSuccess={(token) => setTurnstileToken(token)}
+                        />
+                    </div>
+
                     <button id="reg-submit" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ marginTop: 8 }}>
                         {loading ? <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> : 'Create Account'}
                     </button>
@@ -108,6 +135,16 @@ export default function RegisterPage() {
                 <div className="auth-footer">
                     Already have an account?{' '}
                     <Link to="/login" style={{ color: 'var(--accent-blue-light)', fontWeight: 600 }}>Sign in</Link>
+                </div>
+
+                <div className="divider" style={{ marginTop: 20, marginBottom: 20 }}>or</div>
+
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError('Google Registration Failed')}
+                        useOneTap={false}
+                    />
                 </div>
             </div>
         </div>

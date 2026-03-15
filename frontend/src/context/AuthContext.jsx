@@ -16,8 +16,8 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    const login = async (email, password) => {
-        const { data } = await API.post('/auth/login', { email, password });
+    const login = async (email, password, turnstileToken) => {
+        const { data } = await API.post('/auth/login', { email, password, turnstileToken });
         localStorage.setItem('hn_token', data.token);
         localStorage.setItem('hn_user', JSON.stringify(data.user));
         setUser(data.user);
@@ -32,6 +32,14 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
+    const googleAuth = async (googleToken, turnstileToken, role, organization) => {
+        const { data } = await API.post('/auth/google', { googleToken, turnstileToken, role, organization });
+        localStorage.setItem('hn_token', data.token);
+        localStorage.setItem('hn_user', JSON.stringify(data.user));
+        setUser(data.user);
+        return data;
+    };
+
     const logout = () => {
         localStorage.removeItem('hn_token');
         localStorage.removeItem('hn_user');
@@ -39,7 +47,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, googleAuth, logout, loading }}>
             {children}
         </AuthContext.Provider>
     );
