@@ -1,0 +1,66 @@
+text,label
+react frontend website html css javascript,web
+node express backend web api server,web
+django web backend api development,web
+vue js frontend web dashboard interface,web
+angular typescript enterprise web application,web
+flask backend web service api server,web
+nextjs web platform frontend backend application,web
+mern stack web application mongodb express react,web
+html css responsive website design project,web
+rest api web backend node express server,web
+
+android mobile application kotlin android studio,app
+flutter mobile application dart cross platform app,app
+react native mobile app ios android development,app
+ios mobile application swift development project,app
+android mobile ui ux application development,app
+flutter mobile app food delivery application,app
+android fitness tracker mobile application kotlin,app
+ride booking mobile app android development project,app
+social networking mobile app flutter project,app
+health monitoring mobile app android development,app
+
+logistic regression classification model sklearn pandas,ai_ml
+random forest classifier machine learning model python,ai_ml
+train_test_split dataset classification sklearn model,ai_ml
+pandas dataframe machine learning data analysis,ai_ml
+matplotlib seaborn data visualization machine learning,ai_ml
+classification report sklearn model evaluation machine learning,ai_ml
+supervised learning classification algorithm python sklearn,ai_ml
+data preprocessing pandas sklearn machine learning pipeline,ai_ml
+feature scaling standardscaler machine learning preprocessing,ai_ml
+model training evaluation accuracy confusion matrix sklearn,ai_ml
+
+penetration testing cybersecurity vulnerability scanner,cyber
+network intrusion detection cybersecurity monitoring system,cyber
+malware detection cybersecurity security analysis tool,cyber
+nmap network scanning cybersecurity security project,cyber
+phishing detection cybersecurity monitoring system,cyber
+firewall monitoring cybersecurity network protection,cyber
+ethical hacking vulnerability assessment cybersecurity tool,cyber
+packet sniffing cybersecurity network monitoring system,cyber
+password security testing ethical hacking project,cyber
+network security monitoring intrusion detection system,cyber
+
+stock market prediction financial analytics system,finance
+crypto trading bot financial trading platform,finance
+bank transaction fraud detection financial system,finance
+financial portfolio management investment analysis tool,finance
+loan prediction financial analytics system,finance
+credit risk prediction financial analysis model,finance
+digital banking transaction analysis financial system,finance
+stock market trading analytics dashboard,finance
+cryptocurrency price forecasting financial model,finance
+financial budgeting management system project,finance
+
+crop disease detection agriculture monitoring system,agri
+smart irrigation agriculture sensor monitoring project,agri
+soil moisture monitoring agriculture farming system,agri
+crop yield prediction agriculture analytics system,agri
+plant disease detection agriculture computer vision,agri
+smart farming agriculture monitoring iot system,agri
+livestock monitoring agriculture farming project,agri
+precision farming agriculture drone monitoring system,agri
+fertilizer recommendation agriculture farming system,agri
+crop monitoring agriculture satellite analytics system,agri

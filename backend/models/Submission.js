@@ -86,6 +86,15 @@ const submissionSchema = new mongoose.Schema({
     default: ''
   },
 
+  mlCategory: {
+    type: String,
+    default: null
+  },
+  mlConfidence: {
+    type: Number,
+    default: null
+  },
+
   // Submission number for this team/event (1 = first, 2 = re-submission, etc.)
   submissionNumber: {
     type: Number,

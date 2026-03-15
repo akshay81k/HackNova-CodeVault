@@ -304,6 +304,7 @@ export default function OrganizerDashboard() {
                                                             <th>Timestamp</th>
                                                             <th>SHA-256 Hash</th>
                                                             <th>Blockchain TX</th>
+                                                            <th>Category</th>
                                                             <th>File</th>
                                                             <th>Download</th>
                                                         </tr>
@@ -426,6 +427,20 @@ export default function OrganizerDashboard() {
                                                                                 <AlertCircle size={12} color="var(--accent-amber)" />
                                                                                 Not anchored
                                                                             </span>
+                                                                        )}
+                                                                    </td>
+
+                                                                    {/* ML Category */}
+                                                                    <td style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                                                                        {s.mlCategory ? (
+                                                                            <div>
+                                                                                <span style={{ fontWeight: 600, color: 'var(--accent-blue-light)' }}>{s.mlCategory}</span>
+                                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                                                                    {s.mlConfidence ? `${(s.mlConfidence * 100).toFixed(1)}% match` : ''}
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span style={{ color: 'var(--text-muted)' }}>—</span>
                                                                         )}
                                                                     </td>
 

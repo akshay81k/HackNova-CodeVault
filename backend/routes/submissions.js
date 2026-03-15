@@ -10,6 +10,7 @@ const { computeGitHash }     = require('../services/gitHasher');
 const { anchorHashOnSolana } = require('../services/solana');
 const { uploadFileToS3, getSignedDownloadUrl, downloadFileFromS3 } = require('../services/s3');
 const { compareSubmissions } = require('../services/plagiarism');
+const { runClassifier } = require('../services/classifier');
 const https = require('https');
 const http  = require('http');
 
@@ -145,6 +146,19 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       console.error('[Submission] .git hash failed (non-fatal):', gitErr.message);
     }
 
+    // Step 2.5: ML Classification
+    let mlCategory = null;
+    let mlConfidence = null;
+    try {
+      console.log(`[Submission] Running ML classification on ${filePath}...`);
+      const mlResult = await runClassifier(filePath);
+      mlCategory = mlResult.category;
+      mlConfidence = mlResult.confidence;
+      console.log(`[Submission] ML classification successful: ${mlCategory} (${mlConfidence})`);
+    } catch (mlErr) {
+      console.error('[Submission] ML classification failed (non-fatal):', mlErr.message);
+    }
+
     // Step 3: Anchor hash on Solana Devnet
     let blockchainTxId     = null;
     let blockchainAnchored = false;
@@ -220,6 +234,9 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       blockchainTxId,
       blockchainAnchored,
       blockchainError,
+
+      mlCategory,
+      mlConfidence,
     });
     console.log(`[Submission] MongoDB record created: ${submission._id}`);
 
@@ -249,6 +266,8 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
         blockchainTxId: submission.blockchainTxId,
         blockchainAnchored: submission.blockchainAnchored,
         blockchainError: submission.blockchainError,
+        mlCategory: submission.mlCategory,
+        mlConfidence: submission.mlConfidence,
         solanaTxUrl: submission.blockchainTxId
           ? `https://explorer.solana.com/tx/${submission.blockchainTxId}?cluster=devnet`
           : null,

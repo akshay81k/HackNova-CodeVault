@@ -181,6 +181,8 @@ export default function SubmitPage() {
                                 ['File Name', result.originalFileName, false],
                                 ['File Size', formatBytes(result.fileSize), false],
                                 ['Team ID', result.teamId, false],
+                                ['Predicted Category', result.mlCategory || 'N/A', false],
+                                ['AI Confidence', result.mlConfidence ? `${(result.mlConfidence * 100).toFixed(2)}%` : 'N/A', false],
                             ].map(([label, value, mono]) => (
                                 <div key={label} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>

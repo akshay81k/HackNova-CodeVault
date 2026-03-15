@@ -119,7 +119,7 @@ export default function AdminDashboard() {
                                 ) : (
                                     <div className="table-wrapper">
                                         <table>
-                                            <thead><tr><th>Verification ID</th><th>Team</th><th>Event</th><th>Timestamp</th><th>Deadline Status</th><th>Hash (SHA-256)</th></tr></thead>
+                                            <thead><tr><th>Verification ID</th><th>Team</th><th>Event</th><th>Timestamp</th><th>Deadline Status</th><th>Category</th><th>Hash (SHA-256)</th></tr></thead>
                                             <tbody>
                                                 {submissions.map(s => (
                                                     <tr key={s._id}>
@@ -128,6 +128,9 @@ export default function AdminDashboard() {
                                                         <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{s.event?.title}</td>
                                                         <td style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{formatDate(s.trustedTimestamp)}</td>
                                                         <td><span className={`status-badge ${s.submittedBeforeDeadline ? 'status-active' : 'status-expired'}`}>{s.submittedBeforeDeadline ? '✅ On-time' : '❌ Late'}</span></td>
+                                                        <td style={{ fontWeight: 600, color: 'var(--accent-blue-light)', fontSize: '0.8rem' }}>
+                                                            {s.mlCategory ? `${s.mlCategory} (${s.mlConfidence ? (s.mlConfidence * 100).toFixed(0) + '%' : ''})` : '—'}
+                                                        </td>
                                                         <td><div className="hash-display" title={s.sha256Hash} onClick={() => navigator.clipboard.writeText(s.sha256Hash)}>{s.sha256Hash.substring(0, 16)}…</div></td>
                                                     </tr>
                                                 ))}
