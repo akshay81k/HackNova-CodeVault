@@ -630,6 +630,16 @@ tbody tr:hover { background: rgba(255,255,255,0.02); }
 .verify-status.match { color: var(--accent-green); }
 .verify-status.mismatch { color: var(--accent-red); }
 
+/* Certificate Styles */
+#digital-certificate {
+  font-family: var(--font-sans);
+  margin-bottom: 20px;
+}
+
+#digital-certificate * {
+  box-sizing: border-box;
+}
+
 /* ===== Event Cards ===== */
 .events-grid {
   display: grid;
