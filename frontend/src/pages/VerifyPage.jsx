@@ -123,7 +123,7 @@ export default function VerifyPage() {
 
                 {/* Result */}
                 {result && !result.isLookupOnly && (
-                    <div className={`verify-result ${result.isMatch ? 'match' : 'mismatch'}`} style={{ marginBottom: 24 }}>
+                    <div className={`verify-result animate-scale-in ${result.isMatch ? 'match' : 'mismatch'}`} style={{ marginBottom: 24 }}>
                         <div className="verify-icon">{result.isMatch ? '✅' : '❌'}</div>
                         <div className={`verify-status ${result.isMatch ? 'match' : 'mismatch'}`}>
                             {result.result}

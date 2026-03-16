@@ -386,16 +386,18 @@ export default function EventDetailPage() {
                                 </div>
                             </div>
 
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Team Name (optional)</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="e.g. CodeCrusaders"
-                                    value={teamName}
-                                    onChange={e => setTeamName(e.target.value)}
-                                />
-                            </div>
+                            {verification?.verified && (
+                                <div className="form-group animate-slide-down" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Team Name (optional)</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. CodeCrusaders"
+                                        value={teamName}
+                                        onChange={e => setTeamName(e.target.value)}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* ── Step 2: Verify Participation ────────────────────────────── */}
@@ -435,19 +437,20 @@ export default function EventDetailPage() {
 
                             {/* Verification Result */}
                             {verification && (
-                                <div style={{
-                                    marginTop: 12,
-                                    padding: '12px 16px',
-                                    borderRadius: 'var(--radius-lg)',
-                                    background: verification.verified
-                                        ? 'rgba(16,185,129,0.08)'
-                                        : 'rgba(239,68,68,0.08)',
-                                    border: `1px solid ${verification.verified ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 10,
-                                    animation: 'fadeInUp 0.25s ease'
-                                }}>
+                                <div
+                                    className="animate-fade-in"
+                                    style={{
+                                        marginTop: 12,
+                                        padding: '12px 16px',
+                                        borderRadius: 'var(--radius-lg)',
+                                        background: verification.verified
+                                            ? 'rgba(16,185,129,0.08)'
+                                            : 'rgba(239,68,68,0.08)',
+                                        border: `1px solid ${verification.verified ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 10
+                                    }}>
                                     {verification.verified
                                         ? <ShieldCheck size={20} color="var(--accent-green)" style={{ flexShrink: 0 }} />
                                         : <ShieldX size={20} color="var(--accent-red)" style={{ flexShrink: 0 }} />

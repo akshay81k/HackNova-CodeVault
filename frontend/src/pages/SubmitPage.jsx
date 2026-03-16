@@ -297,13 +297,13 @@ export default function SubmitPage() {
                             >
                                 <input ref={fileRef} type="file" accept=".zip,.gz,.tar" onChange={handleFileChange} style={{ display: 'none' }} />
                                 {file ? (
-                                    <div>
+                                    <div className="animate-scale-in">
                                         <span className="upload-icon">📦</span>
                                         <div className="upload-title" style={{ color: 'var(--accent-green)' }}>{file.name}</div>
                                         <div className="upload-subtitle">{formatBytes(file.size)} · Click to change</div>
                                     </div>
                                 ) : (
-                                    <div>
+                                    <div className="animate-scale-in">
                                         <span className="upload-icon">☁️</span>
                                         <div className="upload-title">Drop your .git folder ZIP here</div>
                                         <div className="upload-subtitle">Compress your .git folder as ZIP · Max 200MB</div>

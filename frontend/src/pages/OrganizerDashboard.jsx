@@ -69,7 +69,13 @@ export default function OrganizerDashboard() {
             formData.append('deadline', form.deadline);
             formData.append('tags', form.tags.split(',').map(t => t.trim()).filter(Boolean).join(','));
             formData.append('maxTeamSize', form.maxTeamSize);
-            if (teamsFile) formData.append('teamsFile', teamsFile);
+            
+            if (!teamsFile) {
+                setFormError('Participating Teams List (CSV/Excel) is required.');
+                setCreating(false);
+                return;
+            }
+            formData.append('teamsFile', teamsFile);
 
             await API.post('/events', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             setShowCreateModal(false);
@@ -614,7 +620,7 @@ export default function OrganizerDashboard() {
                             {/* Teams CSV/Excel Upload */}
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Users size={15} /> Participating Teams List
+                                    <Users size={15} /> Participating Teams List <span style={{ color: 'var(--accent-red)', marginLeft: -2 }}>*</span>
                                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>
                                         (CSV or Excel)
                                     </span>
@@ -639,13 +645,13 @@ export default function OrganizerDashboard() {
                                         onChange={e => setTeamsFile(e.target.files[0] || null)}
                                     />
                                     {teamsFile ? (
-                                        <div>
+                                        <div className="animate-scale-in">
                                             <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>📊</div>
                                             <div style={{ fontWeight: 600, color: 'var(--accent-green)', fontSize: '0.9rem' }}>{teamsFile.name}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>Click to replace</div>
                                         </div>
                                     ) : (
-                                        <div>
+                                        <div className="animate-scale-in">
                                             <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>
                                                 <Upload size={22} color="var(--text-muted)" style={{ display: 'inline' }} />
                                             </div>
@@ -661,7 +667,7 @@ export default function OrganizerDashboard() {
                                 </div>
                                 {teamsFile && (
                                     <button
-                                        type="button" className="btn btn-ghost btn-sm"
+                                        type="button" className="btn btn-ghost btn-sm animate-fade-in"
                                         style={{ marginTop: 6, color: 'var(--accent-red)' }}
                                         onClick={() => { setTeamsFile(null); teamsFileRef.current.value = ''; }}
                                     >
