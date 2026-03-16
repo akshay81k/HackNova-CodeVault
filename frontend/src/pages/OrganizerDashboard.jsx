@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import {
     Plus, Calendar, FileText, X, ChevronDown,
     Upload, Users, Download, ExternalLink, Copy,
-    CheckCircle, Clock, AlertCircle, Shield, Search
+    CheckCircle, Clock, AlertCircle, Shield, Search, Crown
 } from 'lucide-react';
 
 export default function OrganizerDashboard() {
@@ -152,9 +152,14 @@ export default function OrganizerDashboard() {
                             Create and manage hackathon events · Download submissions via AWS S3
                         </p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-                        <Plus size={16} /> Create Event
-                    </button>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <button className="btn btn-secondary" onClick={() => navigate('/subscription')} style={{ border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)' }}>
+                            <Crown size={16} style={{ marginRight: 6 }} /> Upgrade Plan
+                        </button>
+                        <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+                            <Plus size={16} /> Create Event
+                        </button>
+                    </div>
                 </div>
 
                 {/* Stats */}
@@ -611,7 +616,7 @@ export default function OrganizerDashboard() {
                                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Users size={15} /> Participating Teams List
                                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                                        (CSV or Excel — optional)
+                                        (CSV or Excel)
                                     </span>
                                 </label>
                                 <div
