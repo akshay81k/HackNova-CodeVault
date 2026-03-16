@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import VaultLoader from './components/VaultLoader';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Pages
@@ -14,6 +16,8 @@ import VerifyPage from './pages/VerifyPage';
 import LandingPage from './pages/LandingPage';
 import EventDetailPage from './pages/EventDetailPage';
 import PlagiarismCheckPage from './pages/PlagiarismCheckPage';
+import TimelinePage from './pages/TimelinePage';
+import SubscriptionPage from './pages/SubscriptionPage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -72,22 +76,28 @@ function AppRoutes() {
           <PlagiarismCheckPage />
         </ProtectedRoute>
       } />
+      <Route path="/timeline/:submissionId" element={
+        <ProtectedRoute allowedRoles={['organizer', 'admin']}>
+          <TimelinePage />
+        </ProtectedRoute>
+      } />
+      <Route path="/subscription" element={
+        <ProtectedRoute allowedRoles={['organizer', 'admin']}>
+          <SubscriptionPage />
+        </ProtectedRoute>
+      } />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 function App() {
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id.apps.googleusercontent.com';
-
   return (
-    <GoogleOAuthProvider clientId={googleClientId}>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
-    </GoogleOAuthProvider>
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

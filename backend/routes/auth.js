@@ -7,21 +7,6 @@ const { OAuth2Client } = require('google-auth-library');
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'dummy');
 
-const verifyTurnstile = async (token) => {
-  if (!token) return false;
-  const secret = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
-  try {
-    const response = await axios.post('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      secret,
-      response: token
-    }, { headers: { 'Content-Type': 'application/json' } });
-    return response.data.success;
-  } catch (err) {
-    console.error('[Auth] Turnstile verification error:', err.message);
-    return false;
-  }
-};
-
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
@@ -35,10 +20,6 @@ router.post('/register', async (req, res) => {
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required.' });
-    }
-
-    if (!await verifyTurnstile(turnstileToken)) {
-      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
     }
 
     // Only allow organizer or user registration publicly
@@ -86,10 +67,6 @@ router.post('/login', async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
-    }
-
-    if (!await verifyTurnstile(turnstileToken)) {
-      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
     }
 
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
@@ -178,11 +155,7 @@ router.post('/admin/create', async (req, res) => {
 // @access  Public
 router.post('/google', async (req, res) => {
   try {
-    const { googleToken, turnstileToken, role, organization } = req.body;
-
-    if (!await verifyTurnstile(turnstileToken)) {
-      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
-    }
+    const { googleToken, role, organization } = req.body;
 
     const ticket = await googleClient.verifyIdToken({
       idToken: googleToken,
@@ -201,7 +174,7 @@ router.post('/google', async (req, res) => {
       const userRole = role && allowedRoles.includes(role) ? role : 'user';
       // Create a random safe password for the auto-created account
       const randomPass = require('crypto').randomBytes(12).toString('hex');
-      
+
       user = await User.create({
         name: payload.name,
         email: payload.email,

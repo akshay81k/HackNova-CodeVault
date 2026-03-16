@@ -1,62 +1,195 @@
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, LogOut, LayoutDashboard, Search, CheckCircle } from 'lucide-react';
+import { Shield, LogOut, LayoutDashboard, Search, CheckCircle, Menu, X } from 'lucide-react';
+import gsap from 'gsap';
+
+const RealisticVaultIcon = ({ size = 22 }) => (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Body Base */}
+        <rect x="4" y="4" width="92" height="92" rx="12" fill="#fff" fillOpacity="0.1" stroke="#fff" strokeWidth="6" />
+        
+        {/* Vault Door */}
+        <rect x="16" y="16" width="68" height="68" rx="8" fill="#fff" fillOpacity="0.15" stroke="#fff" strokeWidth="4" />
+        
+        {/* Corner Rivets */}
+        <circle cx="26" cy="26" r="3" fill="#fff" />
+        <circle cx="74" cy="26" r="3" fill="#fff" />
+        <circle cx="26" cy="74" r="3" fill="#fff" />
+        <circle cx="74" cy="74" r="3" fill="#fff" />
+
+        {/* Dial Outer Ring */}
+        <circle cx="50" cy="46" r="18" fill="none" stroke="#fff" strokeWidth="4" />
+        
+        {/* Dial Spokes */}
+        <path d="M50 28 L50 34 M50 58 L50 64 M32 46 L38 46 M62 46 L68 46" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+        
+        {/* Dial Center Hub */}
+        <circle cx="50" cy="46" r="6" fill="#fff" />
+        
+        {/* Keypad Indicator */}
+        <rect x="42" y="74" width="16" height="5" rx="2" fill="#fff" />
+    </svg>
+);
 
 export default function Navbar() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    const navRef = useRef(null);
+    const brandRef = useRef(null);
+    const linksRef = useRef(null);
+    const userRef = useRef(null);
 
     const handleLogout = () => {
         logout();
         navigate('/');
+        setMobileOpen(false);
     };
 
     const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
-
-    const badgeClass = user ? `nav-badge badge-${user.role}` : '';
     const dashPath = user?.role === 'admin' ? '/admin' : user?.role === 'organizer' ? '/organizer' : '/user';
 
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            // Brand slide in
+            gsap.set(brandRef.current, { x: -30, opacity: 0 });
+            gsap.to(brandRef.current, {
+                x: 0,
+                opacity: 1,
+                duration: 0.7,
+                ease: 'power3.out',
+            });
+
+            // Center links drop in
+            const links = linksRef.current?.children;
+            if (links?.length) {
+                gsap.set(links, { y: -15, opacity: 0 });
+                gsap.to(links, {
+                    y: 0,
+                    opacity: 1,
+                    stagger: 0.08,
+                    duration: 0.5,
+                    ease: 'power2.out',
+                    delay: 0.3,
+                });
+            }
+
+            // User area slide in
+            if (userRef.current) {
+                gsap.set(userRef.current, { x: 30, opacity: 0 });
+                gsap.to(userRef.current, {
+                    x: 0,
+                    opacity: 1,
+                    duration: 0.6,
+                    ease: 'power3.out',
+                    delay: 0.4,
+                });
+            }
+        }, navRef);
+
+        return () => ctx.revert();
+    }, []);
+
+    const badgeClass = user ? `nav-badge badge-${user.role}` : '';
+
     return (
-        <nav className="navbar">
-            <Link to="/" className="navbar-brand" style={{ textDecoration: 'none' }}>
-                <div className="brand-icon">🛡️</div>
-                <span>Code<span className="accent">Vault</span></span>
+        <nav className="navbar" ref={navRef}>
+            {/* Brand */}
+            <Link to="/" className="navbar-brand" ref={brandRef} style={{ textDecoration: 'none' }}>
+                <div className="brand-icon-wrap">
+                    <div className="brand-icon">
+                        <RealisticVaultIcon size={24} />
+                    </div>
+                    <div className="brand-glow" />
+                </div>
+                <span className="brand-text">
+                    Code<span className="accent">Vault</span>
+                </span>
             </Link>
 
-            <div className="navbar-links">
+            {/* Center Links — desktop */}
+            <div className="navbar-center" ref={linksRef}>
                 <Link to="/events" className={`nav-link ${isActive('/events') ? 'active' : ''}`}>
-                    <Search size={14} style={{ display: 'inline', marginRight: 4 }} />
-                    Events
+                    <Search size={15} />
+                    <span>Events</span>
                 </Link>
                 <Link to="/verify" className={`nav-link ${isActive('/verify') ? 'active' : ''}`}>
-                    <CheckCircle size={14} style={{ display: 'inline', marginRight: 4 }} />
-                    Verify
+                    <CheckCircle size={15} />
+                    <span>Verify</span>
                 </Link>
                 {user && (
                     <Link to={dashPath} className={`nav-link ${isActive(dashPath) ? 'active' : ''}`}>
-                        <LayoutDashboard size={14} style={{ display: 'inline', marginRight: 4 }} />
-                        Dashboard
+                        <LayoutDashboard size={15} />
+                        <span>Dashboard</span>
                     </Link>
                 )}
             </div>
 
-            <div className="nav-user">
+            {/* Right side — user info */}
+            <div className="navbar-right" ref={userRef}>
                 {user ? (
                     <>
-                        <span className={badgeClass}>{user.role}</span>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{user.name}</span>
-                        <button className="btn btn-ghost btn-sm" onClick={handleLogout} title="Logout">
-                            <LogOut size={16} />
+                        <div className="nav-user-info">
+                            <div className="nav-avatar">
+                                {user.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="nav-user-details">
+                                <span className="nav-user-name">{user.name}</span>
+                                <span className={badgeClass}>{user.role}</span>
+                            </div>
+                        </div>
+                        <button className="btn-icon" onClick={handleLogout} title="Logout">
+                            <LogOut size={17} />
                         </button>
                     </>
                 ) : (
-                    <>
-                        <Link to="/login" className="btn btn-secondary btn-sm">Login</Link>
-                        <Link to="/register" className="btn btn-primary btn-sm">Register</Link>
-                    </>
+                    <div className="nav-auth-buttons">
+                        <Link to="/login" className="btn btn-ghost btn-sm">Login</Link>
+                        <Link to="/register" className="btn btn-primary btn-sm nav-register-btn">
+                            Get Started
+                        </Link>
+                    </div>
                 )}
             </div>
+
+            {/* Mobile hamburger */}
+            <button className="mobile-toggle" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
+                {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+
+            {/* Mobile drawer */}
+            {mobileOpen && (
+                <div className="mobile-drawer">
+                    <div className="mobile-drawer-links">
+                        <Link to="/events" className={`mobile-link ${isActive('/events') ? 'active' : ''}`} onClick={() => setMobileOpen(false)}>
+                            <Search size={16} /> Events
+                        </Link>
+                        <Link to="/verify" className={`mobile-link ${isActive('/verify') ? 'active' : ''}`} onClick={() => setMobileOpen(false)}>
+                            <CheckCircle size={16} /> Verify
+                        </Link>
+                        {user && (
+                            <Link to={dashPath} className={`mobile-link ${isActive(dashPath) ? 'active' : ''}`} onClick={() => setMobileOpen(false)}>
+                                <LayoutDashboard size={16} /> Dashboard
+                            </Link>
+                        )}
+                    </div>
+                    <div className="mobile-drawer-footer">
+                        {user ? (
+                            <button className="btn btn-danger btn-full" onClick={handleLogout}>
+                                <LogOut size={16} /> Logout
+                            </button>
+                        ) : (
+                            <>
+                                <Link to="/login" className="btn btn-secondary btn-full" onClick={() => setMobileOpen(false)}>Login</Link>
+                                <Link to="/register" className="btn btn-primary btn-full" onClick={() => setMobileOpen(false)}>Get Started</Link>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </nav>
     );
 }

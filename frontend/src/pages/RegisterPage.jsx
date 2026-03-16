@@ -1,19 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
-import { Turnstile } from '@marsidev/react-turnstile';
-import { GoogleLogin } from '@react-oauth/google';
+import gsap from 'gsap';
+import InteractiveBackground from '../components/InteractiveBackground';
 
 export default function RegisterPage() {
     const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user', organization: '' });
     const [showPass, setShowPass] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [turnstileToken, setTurnstileToken] = useState(null);
 
-    const { register, googleAuth } = useAuth();
+    const { register } = useAuth();
     const navigate = useNavigate();
+
+    const boxRef = useRef(null);
+    const fieldsRef = useRef(null);
+
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            gsap.from(boxRef.current, {
+                y: 40,
+                opacity: 0,
+                scale: 0.95,
+                duration: 0.7,
+                ease: 'power3.out',
+            });
+
+            const fields = fieldsRef.current?.children;
+            if (fields?.length) {
+                gsap.from(fields, {
+                    y: 20,
+                    opacity: 1, // Ensure visible
+                    stagger: 0.08,
+                    duration: 0.5,
+                    delay: 0.3,
+                    ease: 'power2.out',
+                });
+            }
+        });
+
+        return () => ctx.revert();
+    }, []);
 
     const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -23,10 +51,10 @@ export default function RegisterPage() {
         if (form.password.length < 6) {
             return setError('Password must be at least 6 characters.');
         }
-        if (!turnstileToken) return setError('Please complete the CAPTCHA first.');
+
         setLoading(true);
         try {
-            const data = await register({ ...form, turnstileToken });
+            const data = await register(form);
             if (data.user.role === 'admin') navigate('/admin');
             else if (data.user.role === 'organizer') navigate('/organizer');
             else navigate('/user');
@@ -37,25 +65,13 @@ export default function RegisterPage() {
         }
     };
 
-    const handleGoogleSuccess = async (credentialResponse) => {
-        if (!turnstileToken) return setError('Please complete the CAPTCHA first to use Google Sign-In.');
-        setError('');
-        setLoading(true);
-        try {
-            const data = await googleAuth(credentialResponse.credential, turnstileToken, form.role, form.organization);
-            if (data.user.role === 'admin') navigate('/admin');
-            else if (data.user.role === 'organizer') navigate('/organizer');
-            else navigate('/user');
-        } catch (err) {
-            setError(err.response?.data?.message || 'Google Registration failed.');
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     return (
         <div className="auth-page">
-            <div className="auth-box">
+            <InteractiveBackground />
+
+            <div className="auth-box" ref={boxRef} style={{ animation: 'none' }}>
                 <div className="auth-logo">
                     <div className="auth-logo-icon">🛡️</div>
                     <div>
@@ -69,7 +85,7 @@ export default function RegisterPage() {
 
                 {error && <div className="alert alert-error">⚠️ {error}</div>}
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} ref={fieldsRef}>
                     <div className="form-group">
                         <label className="form-label">Full Name</label>
                         <input id="reg-name" type="text" name="name" className="form-input" placeholder="Jane Doe"
@@ -120,15 +136,10 @@ export default function RegisterPage() {
                         </div>
                     </div>
 
-                    <div style={{ margin: '16px 0', display: 'flex', justifyContent: 'center' }}>
-                        <Turnstile
-                            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
-                            onSuccess={(token) => setTurnstileToken(token)}
-                        />
-                    </div>
 
-                    <button id="reg-submit" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ marginTop: 8 }}>
-                        {loading ? <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> : 'Create Account'}
+
+                    <button id="reg-submit" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ marginTop: 8, opacity: 1, visibility: 'visible' }}>
+                        {loading ? 'Processing...' : 'Create Account'}
                     </button>
                 </form>
 
@@ -137,15 +148,7 @@ export default function RegisterPage() {
                     <Link to="/login" style={{ color: 'var(--accent-blue-light)', fontWeight: 600 }}>Sign in</Link>
                 </div>
 
-                <div className="divider" style={{ marginTop: 20, marginBottom: 20 }}>or</div>
 
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-                    <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={() => setError('Google Registration Failed')}
-                        useOneTap={false}
-                    />
-                </div>
             </div>
         </div>
     );
