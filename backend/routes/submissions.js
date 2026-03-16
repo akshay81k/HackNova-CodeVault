@@ -11,6 +11,7 @@ const { anchorHashOnSolana } = require('../services/solana');
 const { uploadFileToS3, getSignedDownloadUrl, downloadFileFromS3 } = require('../services/s3');
 const { compareSubmissions } = require('../services/plagiarism');
 const { runClassifier } = require('../services/classifier');
+const TimelineEvent     = require('../models/TimelineEvent');
 const https = require('https');
 const http  = require('http');
 
@@ -196,6 +197,15 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       mlConfidence: null         // Updated in background
     });
 
+    // ── Timeline: SUBMISSION_UPLOADED + HASH_GENERATED ──
+    const hashDetails = [`SHA-256: ${sha256Hash.substring(0, 16)}…`];
+    if (gitHash) hashDetails.push(`Git: ${gitHash.substring(0, 16)}…`);
+    const tlOps = [
+      TimelineEvent.create({ submission: submission._id, eventType: submissionNumber > 1 ? 'SUBMISSION_RESUBMITTED' : 'SUBMISSION_UPLOADED', details: `${submissionNumber > 1 ? `Re-submission #${submissionNumber} — ` : ''}File: ${req.file.originalname} (${(req.file.size / 1024).toFixed(1)} KB)` }),
+      TimelineEvent.create({ submission: submission._id, eventType: 'HASH_GENERATED', details: hashDetails.join(' | ') })
+    ];
+    await Promise.all(tlOps).catch(err => console.error('[Timeline] Error creating events:', err.message));
+
     await submission.populate([
       { path: 'event', select: 'title deadline' },
       { path: 'submittedBy', select: 'name email' }
@@ -254,6 +264,17 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
         }
 
         await Submission.findByIdAndUpdate(submission._id, updateData);
+
+        // ── Timeline: background events ──
+        const timelineOps = [];
+        if (blockchainTxId) {
+          timelineOps.push(TimelineEvent.create({ submission: submission._id, eventType: 'BLOCKCHAIN_ANCHORED', details: `TxID: ${blockchainTxId.substring(0, 20)}…` }));
+        }
+        if (mlResult) {
+          timelineOps.push(TimelineEvent.create({ submission: submission._id, eventType: 'ML_CLASSIFIED', details: `Category: ${mlResult.category} (${(mlResult.confidence * 100).toFixed(1)}%)` }));
+        }
+        await Promise.all(timelineOps).catch(err => console.error('[Timeline] Error:', err.message));
+
         console.log(`[Submission] [Background] Tasks complete for ${submission._id}.`);
       } catch (bgErr) {
         console.error(`[Submission] [Background] Error: ${bgErr.message}`);
@@ -534,6 +555,13 @@ router.post('/compare', protect, authorize('organizer', 'admin'), async (req, re
     const result = await compareSubmissions(zipBufferA, zipBufferB);
     console.log('[Plagiarism] Comparison complete!');
 
+    // ── Timeline: PLAGIARISM_CHECK_RUN for both submissions ──
+    const plagDetail = `Similarity: ${result.overallSimilarity != null ? (result.overallSimilarity * 100).toFixed(1) + '%' : 'N/A'}`;
+    await Promise.all([
+      TimelineEvent.create({ submission: subA._id, eventType: 'PLAGIARISM_CHECK_RUN', details: `${plagDetail} — compared with ${subB.teamName || subB.teamId}` }),
+      TimelineEvent.create({ submission: subB._id, eventType: 'PLAGIARISM_CHECK_RUN', details: `${plagDetail} — compared with ${subA.teamName || subA.teamId}` })
+    ]).catch(err => console.error('[Timeline] Error:', err.message));
+
     return res.json({
       success: true,
       comparison: {
@@ -545,6 +573,40 @@ router.post('/compare', protect, authorize('organizer', 'admin'), async (req, re
     });
   } catch (err) {
     console.error('[Plagiarism] Error:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @route   GET /api/submissions/:id/timeline
+// @desc    Get forensic timeline events for a submission
+// @access  Organizer (own event), Admin
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/:id/timeline', protect, authorize('organizer', 'admin'), async (req, res) => {
+  try {
+    const submission = await Submission.findById(req.params.id).populate('event', 'title organizer');
+    if (!submission) {
+      return res.status(404).json({ success: false, message: 'Submission not found.' });
+    }
+
+    // Organizer can only view timeline for their own events
+    if (
+      req.user.role === 'organizer' &&
+      submission.event.organizer.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    // Aggregate timeline from ALL submissions by this team for this event
+    const allTeamSubs = await Submission.find({
+      event: submission.event._id,
+      teamId: submission.teamId
+    }).select('_id');
+    const subIds = allTeamSubs.map(s => s._id);
+
+    const events = await TimelineEvent.find({ submission: { $in: subIds } }).sort({ timestamp: 1 });
+    res.json({ success: true, count: events.length, events });
+  } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });

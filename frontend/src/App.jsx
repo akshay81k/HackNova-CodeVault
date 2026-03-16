@@ -14,6 +14,7 @@ import VerifyPage from './pages/VerifyPage';
 import LandingPage from './pages/LandingPage';
 import EventDetailPage from './pages/EventDetailPage';
 import PlagiarismCheckPage from './pages/PlagiarismCheckPage';
+import TimelinePage from './pages/TimelinePage';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -70,6 +71,11 @@ function AppRoutes() {
       <Route path="/plagiarism/:eventId" element={
         <ProtectedRoute allowedRoles={['organizer', 'admin']}>
           <PlagiarismCheckPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/timeline/:submissionId" element={
+        <ProtectedRoute allowedRoles={['organizer', 'admin']}>
+          <TimelinePage />
         </ProtectedRoute>
       } />
       <Route path="*" element={<Navigate to="/" replace />} />

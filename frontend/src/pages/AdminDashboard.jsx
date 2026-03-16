@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
-import { Users, Calendar, FileText, Activity, Trash2 } from 'lucide-react';
+import { Users, Calendar, FileText, Activity, Trash2, Clock } from 'lucide-react';
 
 export default function AdminDashboard() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [stats, setStats] = useState({ users: 0, events: 0, submissions: 0 });
     const [events, setEvents] = useState([]);
     const [submissions, setSubmissions] = useState([]);
@@ -119,7 +121,7 @@ export default function AdminDashboard() {
                                 ) : (
                                     <div className="table-wrapper">
                                         <table>
-                                            <thead><tr><th>Verification ID</th><th>Team</th><th>Event</th><th>Timestamp</th><th>Deadline Status</th><th>Category</th><th>Hash (SHA-256)</th></tr></thead>
+                                            <thead><tr><th>Verification ID</th><th>Team</th><th>Event</th><th>Timestamp</th><th>Deadline Status</th><th>Category</th><th>Hash (SHA-256)</th><th>Timeline</th></tr></thead>
                                             <tbody>
                                                 {submissions.map(s => (
                                                     <tr key={s._id}>
@@ -132,6 +134,15 @@ export default function AdminDashboard() {
                                                             {s.mlCategory ? `${s.mlCategory} (${s.mlConfidence ? (s.mlConfidence * 100).toFixed(0) + '%' : ''})` : '—'}
                                                         </td>
                                                         <td><div className="hash-display" title={s.sha256Hash} onClick={() => navigator.clipboard.writeText(s.sha256Hash)}>{s.sha256Hash.substring(0, 16)}…</div></td>
+                                                        <td>
+                                                            <button
+                                                                className="btn btn-secondary btn-sm"
+                                                                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', padding: '4px 10px' }}
+                                                                onClick={() => navigate(`/timeline/${s._id}`)}
+                                                            >
+                                                                <Clock size={12} /> Timeline
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>

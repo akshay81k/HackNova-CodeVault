@@ -307,10 +307,21 @@ export default function OrganizerDashboard() {
                                                             <th>Category</th>
                                                             <th>File</th>
                                                             <th>Download</th>
+                                                            <th>Timeline</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {submissions.map(s => {
+                                                        {(() => {
+                                                            // Deduplicate: group by teamId, keep latest (highest submissionNumber)
+                                                            const teamMap = {};
+                                                            submissions.forEach(s => {
+                                                                const key = s.teamId || s._id;
+                                                                if (!teamMap[key] || (s.submissionNumber || 1) > (teamMap[key].submissionNumber || 1)) {
+                                                                    teamMap[key] = s;
+                                                                }
+                                                            });
+                                                            const deduped = Object.values(teamMap);
+                                                            return deduped.map(s => {
                                                             const dlStatus = dlState[s._id] || 'idle';
                                                             const isAnchored = s.blockchainAnchored && s.blockchainTxId;
                                                             return (
@@ -500,9 +511,31 @@ export default function OrganizerDashboard() {
                                                                             )}
                                                                         </button>
                                                                     </td>
+
+                                                                    {/* Timeline button */}
+                                                                    <td>
+                                                                        <button
+                                                                            className="btn btn-secondary btn-sm"
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: 4,
+                                                                                fontSize: '0.75rem',
+                                                                                padding: '4px 10px',
+                                                                                background: 'rgba(139,92,246,0.1)',
+                                                                                borderColor: 'rgba(139,92,246,0.3)',
+                                                                                color: 'var(--accent-purple)',
+                                                                                fontWeight: 600
+                                                                            }}
+                                                                            onClick={() => navigate(`/timeline/${s._id}`)}
+                                                                        >
+                                                                            <Clock size={12} /> 📜 Timeline
+                                                                        </button>
+                                                                    </td>
                                                                 </tr>
                                                             );
-                                                        })}
+                                                        })
+                                                        })()}
                                                     </tbody>
                                                 </table>
                                             </div>
