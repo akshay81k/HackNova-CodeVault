@@ -229,6 +229,10 @@ router.post('/', protect, authorize('organizer', 'admin'), teamsUpload.single('t
       return res.status(400).json({ success: false, message: 'Title, description, and deadline are required.' });
     }
 
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Teams list (CSV/Excel) is required.' });
+    }
+
     const deadlineDate = new Date(deadline);
     if (isNaN(deadlineDate.getTime()) || deadlineDate <= new Date()) {
       if (uploadedFilePath) fs.unlinkSync(uploadedFilePath);

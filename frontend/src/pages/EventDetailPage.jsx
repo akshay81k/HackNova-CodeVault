@@ -5,8 +5,11 @@ import API from '../api';
 import Navbar from '../components/Navbar';
 import {
     Upload, CheckCircle, AlertTriangle, Clock, Copy,
-    ShieldCheck, ShieldX, Loader, ArrowLeft, Users
+    ShieldCheck, ShieldX, Loader, ArrowLeft, Users, Download
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export default function EventDetailPage() {
     const { eventId } = useParams();
@@ -34,6 +37,22 @@ export default function EventDetailPage() {
     const [progress, setProgress] = useState(0);
     const [error, setError] = useState('');
     const [result, setResult] = useState(null);
+
+    const downloadCertificate = async () => {
+        const certElement = document.getElementById('digital-certificate');
+        if (!certElement) return;
+        try {
+            const canvas = await html2canvas(certElement, { scale: 2, useCORS: true, backgroundColor: '#0f172a' });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('landscape', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`HackNova_Certificate_${result.teamId || result.teamName || 'Submission'}.pdf`);
+        } catch (err) {
+            console.error("Failed to generate PDF", err);
+        }
+    };
 
     useEffect(() => { loadEvent(); }, [eventId]);
 
@@ -224,71 +243,121 @@ export default function EventDetailPage() {
                             <div>The deadline for this event has passed. No further submissions are accepted.</div>
                         </div>
                     </div>
-                ) : result ? (
-                    /* ── Success Result ────────────────────────────────────────────── */
+                ) : result?.verificationId || result ? (
+                    /* ── Success Result - Digital Certificate ────────────────────────────── */
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div style={{
-                            background: 'rgba(16,185,129,0.06)',
-                            border: '1px solid rgba(16,185,129,0.4)',
-                            borderRadius: 'var(--radius-xl)',
-                            padding: '32px',
-                            textAlign: 'center',
-                            boxShadow: 'var(--shadow-green)',
-                            animation: 'fadeInUp 0.4s ease'
+                        <div id="digital-certificate" style={{ 
+                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', 
+                            border: '1px solid rgba(14, 165, 233, 0.3)', 
+                            borderRadius: '20px', 
+                            padding: '48px', 
+                            color: 'white', 
+                            position: 'relative', 
+                            overflow: 'hidden', 
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', 
+                            marginBottom: '20px' 
                         }}>
-                            <div style={{ fontSize: '3rem', marginBottom: 12 }}>✅</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent-green)', marginBottom: 8 }}>
-                                SUBMISSION RECEIVED
-                            </div>
-                            {result.submissionNumber > 1 && (
-                                <div style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', fontWeight: 600, marginBottom: 8 }}>
-                                    Re-submission #{result.submissionNumber}
-                                </div>
-                            )}
-                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                Your .git submission has been cryptographically hashed and timestamped.
-                            </div>
-                        </div>
+                            {/* Decorative Premium Border Lines */}
+                            <div style={{ position: 'absolute', top: '12px', bottom: '12px', left: '12px', right: '12px', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', pointerEvents: 'none' }}></div>
 
-                        <div className="card">
-                            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 16 }}>📋 Submission Details</div>
-                            {[
-                                ['Verification ID', result.verificationId, true],
-                                ['SHA-256 Hash', result.sha256Hash, true],
-                                ['Submitted At', new Date(result.trustedTimestamp).toISOString(), false],
-                                ['File Name', result.originalFileName, false],
-                                ['File Size', formatBytes(result.fileSize), false],
-                                ['Team ID', result.teamId, false],
-                                ['Submission #', String(result.submissionNumber || 1), false],
-                            ].map(([label, value, mono]) => (
-                                <div key={label} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        {mono ? (
-                                            <div className="hash-display" style={{ flex: 1 }} onClick={() => copyToClipboard(value)}>{value}</div>
-                                        ) : (
-                                            <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{value}</div>
+                            {/* Elegant Glowing Orbs */}
+                            <div style={{ position: 'absolute', top: -100, right: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(14,165,233,0.15) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none' }}></div>
+                            <div style={{ position: 'absolute', bottom: -100, left: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none' }}></div>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1, flexWrap: 'wrap', gap: 32 }}>
+                                
+                                {/* Left Info Column */}
+                                <div style={{ flex: '1 1 350px' }}>
+                                    {/* Header */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
+                                        <div style={{ 
+                                            width: '48px', height: '48px', 
+                                            background: 'rgba(14, 165, 233, 0.1)', 
+                                            border: '1px solid rgba(14, 165, 233, 0.2)', 
+                                            borderRadius: '12px', 
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' 
+                                        }}>🛡️</div>
+                                        <div>
+                                            <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, letterSpacing: '3px', textTransform: 'uppercase', color: '#38bdf8' }}>HackNova</h2>
+                                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', marginTop: '4px' }}>Immutable Submission Record</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Event Name */}
+                                    <div style={{ marginBottom: 32 }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Event Reference</div>
+                                        <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#f8fafc', lineHeight: 1.3 }}>{event.title}</div>
+                                        {result.submissionNumber > 1 && (
+                                            <div style={{ display: 'inline-block', marginTop: '8px', padding: '4px 10px', background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                                                Re-submission #{result.submissionNumber}
+                                            </div>
                                         )}
-                                        {mono && (
-                                            <button className="btn btn-ghost btn-sm" onClick={() => copyToClipboard(value)}>
-                                                <Copy size={14} />
-                                            </button>
+                                    </div>
+
+                                    {/* Grid for User & Date */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '24px', marginBottom: '36px', paddingBottom: '32px', borderBottom: '1px dashed rgba(255,255,255,0.1)' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Authenticated Team</div>
+                                            <div style={{ fontSize: '1.15rem', fontWeight: 500, color: '#e2e8f0' }}>{result.teamName || result.teamId || user?.name || 'Unknown'}</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Trusted Timestamp</div>
+                                            <div style={{ fontSize: '1.15rem', fontWeight: 500, color: '#e2e8f0' }}>{formatDate(result.trustedTimestamp)}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Hash Display */}
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Cryptographic Hash (SHA-256)</div>
+                                        <div style={{ 
+                                            fontFamily: 'monospace', fontSize: '0.9rem', color: '#38bdf8', 
+                                            background: 'rgba(0,0,0,0.3)', padding: '12px 16px', borderRadius: '8px', 
+                                            wordBreak: 'break-all', lineHeight: 1.5, border: '1px solid rgba(255,255,255,0.05)' 
+                                        }}>
+                                            {result.sha256Hash}
+                                        </div>
+                                        
+                                        {result.mlCategory && (
+                                            <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>ML Prediction:</div>
+                                                <div style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#eab308', background: 'rgba(234, 179, 8, 0.1)', padding: '4px 10px', borderRadius: '4px', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
+                                                    {result.mlCategory}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
-                            ))}
+                                
+                                {/* Right QR Code Column */}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', margin: '0 auto' }}>
+                                    <div style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', flexShrink: 0 }}>
+                                        <QRCodeSVG value={`${window.location.origin}/verify?id=${result.verificationId}`} size={160} level="H" includeMargin={false} />
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>Scan to Verify</div>
+                                        <div style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#f8fafc', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: '4px', letterSpacing: '1px' }}>
+                                            ID: {result.verificationId}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
 
-                        <div className="alert alert-info">
+                        <div className="alert alert-info" style={{ marginTop: 8 }}>
                             💡 Save your <strong>Verification ID</strong> and <strong>SHA-256 hash</strong>. You may re-submit before the deadline — only your latest verified submission will be evaluated.
                         </div>
 
-                        <div style={{ display: 'flex', gap: 10 }}>
-                            <button className="btn btn-primary" onClick={() => { setResult(null); setFile(null); setProgress(0); }}>
-                                Submit Again
+                        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                            <button className="btn btn-primary" onClick={downloadCertificate} style={{ flex: 1, justifyContent: 'center', padding: '14px' }}>
+                                <Download size={18} /> Download Certificate (PDF)
                             </button>
-                            <button className="btn btn-secondary" onClick={() => navigate('/user')}>View My Submissions</button>
-                            <button className="btn btn-secondary" onClick={() => navigate('/verify')}>Verify</button>
+                            <button className="btn btn-secondary" onClick={() => { setResult(null); setFile(null); setProgress(0); }} style={{ flex: 1, justifyContent: 'center' }}>
+                                Submit Another Version
+                            </button>
+                            <button className="btn btn-secondary" onClick={() => navigate('/verify?id=' + result.verificationId)} style={{ flex: 1, justifyContent: 'center' }}>
+                                Verification Console
+                            </button>
                         </div>
                     </div>
                 ) : (
@@ -317,16 +386,18 @@ export default function EventDetailPage() {
                                 </div>
                             </div>
 
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Team Name (optional)</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="e.g. CodeCrusaders"
-                                    value={teamName}
-                                    onChange={e => setTeamName(e.target.value)}
-                                />
-                            </div>
+                            {verification?.verified && (
+                                <div className="form-group animate-slide-down" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Team Name (optional)</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g. CodeCrusaders"
+                                        value={teamName}
+                                        onChange={e => setTeamName(e.target.value)}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* ── Step 2: Verify Participation ────────────────────────────── */}
@@ -366,19 +437,20 @@ export default function EventDetailPage() {
 
                             {/* Verification Result */}
                             {verification && (
-                                <div style={{
-                                    marginTop: 12,
-                                    padding: '12px 16px',
-                                    borderRadius: 'var(--radius-lg)',
-                                    background: verification.verified
-                                        ? 'rgba(16,185,129,0.08)'
-                                        : 'rgba(239,68,68,0.08)',
-                                    border: `1px solid ${verification.verified ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 10,
-                                    animation: 'fadeInUp 0.25s ease'
-                                }}>
+                                <div
+                                    className="animate-fade-in"
+                                    style={{
+                                        marginTop: 12,
+                                        padding: '12px 16px',
+                                        borderRadius: 'var(--radius-lg)',
+                                        background: verification.verified
+                                            ? 'rgba(16,185,129,0.08)'
+                                            : 'rgba(239,68,68,0.08)',
+                                        border: `1px solid ${verification.verified ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 10
+                                    }}>
                                     {verification.verified
                                         ? <ShieldCheck size={20} color="var(--accent-green)" style={{ flexShrink: 0 }} />
                                         : <ShieldX size={20} color="var(--accent-red)" style={{ flexShrink: 0 }} />

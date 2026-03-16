@@ -7,6 +7,26 @@ const { OAuth2Client } = require('google-auth-library');
 const router = express.Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'dummy');
 
+const verifyTurnstile = async (token) => {
+  if (!token) return false;
+  const secret = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
+  try {
+    const params = new URLSearchParams();
+    params.append('secret', secret);
+    params.append('response', token);
+
+    const response = await axios.post(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      params.toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    return response.data.success;
+  } catch (err) {
+    console.error('[Auth] Turnstile verification error:', err.message);
+    return false;
+  }
+};
+
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };

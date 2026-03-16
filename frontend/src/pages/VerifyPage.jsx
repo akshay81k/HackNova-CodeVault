@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import { Search, Upload, Hash, Copy, CheckCircle, XCircle } from 'lucide-react';
@@ -12,6 +13,16 @@ export default function VerifyPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [dragging, setDragging] = useState(false);
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        const idParam = searchParams.get('id');
+        if (idParam) {
+            setVerificationId(idParam);
+            setMode('lookup');
+            performLookup(idParam);
+        }
+    }, []);
 
     const formatDate = (d) => new Date(d).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'long' });
     const formatBytes = (b) => b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
@@ -51,19 +62,24 @@ export default function VerifyPage() {
         }
     };
 
-    const handleLookup = async () => {
-        if (!verificationId.trim()) return;
+    const performLookup = async (idToLookup) => {
+        const id = typeof idToLookup === 'string' ? idToLookup : verificationId.trim();
+        if (!id) return;
         setError('');
         setResult(null);
         setLoading(true);
         try {
-            const { data } = await API.get(`/verify/${verificationId.trim()}`);
+            const { data } = await API.get(`/verify/${id}`);
             setResult({ isLookupOnly: true, ...data });
         } catch (err) {
             setError(err.response?.data?.message || 'No record found.');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleLookup = async () => {
+        await performLookup(verificationId.trim());
     };
 
     const copy = (t) => navigator.clipboard.writeText(t);
@@ -107,7 +123,7 @@ export default function VerifyPage() {
 
                 {/* Result */}
                 {result && !result.isLookupOnly && (
-                    <div className={`verify-result ${result.isMatch ? 'match' : 'mismatch'}`} style={{ marginBottom: 24 }}>
+                    <div className={`verify-result animate-scale-in ${result.isMatch ? 'match' : 'mismatch'}`} style={{ marginBottom: 24 }}>
                         <div className="verify-icon">{result.isMatch ? '✅' : '❌'}</div>
                         <div className={`verify-status ${result.isMatch ? 'match' : 'mismatch'}`}>
                             {result.result}

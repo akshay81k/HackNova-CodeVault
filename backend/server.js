@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
 const submissionRoutes = require('./routes/submissions');
 const verifyRoutes = require('./routes/verify');
+const paymentRoutes = require('./routes/payment');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/verify', verifyRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

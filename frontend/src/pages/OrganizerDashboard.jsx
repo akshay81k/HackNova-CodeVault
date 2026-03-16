@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import {
     Plus, Calendar, FileText, X, ChevronDown,
     Upload, Users, Download, ExternalLink, Copy,
-    CheckCircle, Clock, AlertCircle, Shield, Search
+    CheckCircle, Clock, AlertCircle, Shield, Search, Crown
 } from 'lucide-react';
 
 export default function OrganizerDashboard() {
@@ -69,7 +69,13 @@ export default function OrganizerDashboard() {
             formData.append('deadline', form.deadline);
             formData.append('tags', form.tags.split(',').map(t => t.trim()).filter(Boolean).join(','));
             formData.append('maxTeamSize', form.maxTeamSize);
-            if (teamsFile) formData.append('teamsFile', teamsFile);
+            
+            if (!teamsFile) {
+                setFormError('Participating Teams List (CSV/Excel) is required.');
+                setCreating(false);
+                return;
+            }
+            formData.append('teamsFile', teamsFile);
 
             await API.post('/events', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             setShowCreateModal(false);
@@ -152,9 +158,14 @@ export default function OrganizerDashboard() {
                             Create and manage hackathon events · Download submissions via AWS S3
                         </p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-                        <Plus size={16} /> Create Event
-                    </button>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <button className="btn btn-secondary" onClick={() => navigate('/subscription')} style={{ border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)' }}>
+                            <Crown size={16} style={{ marginRight: 6 }} /> Upgrade Plan
+                        </button>
+                        <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+                            <Plus size={16} /> Create Event
+                        </button>
+                    </div>
                 </div>
 
                 {/* Stats */}
@@ -307,10 +318,21 @@ export default function OrganizerDashboard() {
                                                             <th>Category</th>
                                                             <th>File</th>
                                                             <th>Download</th>
+                                                            <th>Timeline</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {submissions.map(s => {
+                                                        {(() => {
+                                                            // Deduplicate: group by teamId, keep latest (highest submissionNumber)
+                                                            const teamMap = {};
+                                                            submissions.forEach(s => {
+                                                                const key = s.teamId || s._id;
+                                                                if (!teamMap[key] || (s.submissionNumber || 1) > (teamMap[key].submissionNumber || 1)) {
+                                                                    teamMap[key] = s;
+                                                                }
+                                                            });
+                                                            const deduped = Object.values(teamMap);
+                                                            return deduped.map(s => {
                                                             const dlStatus = dlState[s._id] || 'idle';
                                                             const isAnchored = s.blockchainAnchored && s.blockchainTxId;
                                                             return (
@@ -500,9 +522,31 @@ export default function OrganizerDashboard() {
                                                                             )}
                                                                         </button>
                                                                     </td>
+
+                                                                    {/* Timeline button */}
+                                                                    <td>
+                                                                        <button
+                                                                            className="btn btn-secondary btn-sm"
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: 4,
+                                                                                fontSize: '0.75rem',
+                                                                                padding: '4px 10px',
+                                                                                background: 'rgba(139,92,246,0.1)',
+                                                                                borderColor: 'rgba(139,92,246,0.3)',
+                                                                                color: 'var(--accent-purple)',
+                                                                                fontWeight: 600
+                                                                            }}
+                                                                            onClick={() => navigate(`/timeline/${s._id}`)}
+                                                                        >
+                                                                            <Clock size={12} /> 📜 Timeline
+                                                                        </button>
+                                                                    </td>
                                                                 </tr>
                                                             );
-                                                        })}
+                                                        })
+                                                        })()}
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -576,9 +620,9 @@ export default function OrganizerDashboard() {
                             {/* Teams CSV/Excel Upload */}
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Users size={15} /> Participating Teams List
+                                    <Users size={15} /> Participating Teams List <span style={{ color: 'var(--accent-red)', marginLeft: -2 }}>*</span>
                                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                                        (CSV or Excel — optional)
+                                        (CSV or Excel)
                                     </span>
                                 </label>
                                 <div
@@ -601,13 +645,13 @@ export default function OrganizerDashboard() {
                                         onChange={e => setTeamsFile(e.target.files[0] || null)}
                                     />
                                     {teamsFile ? (
-                                        <div>
+                                        <div className="animate-scale-in">
                                             <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>📊</div>
                                             <div style={{ fontWeight: 600, color: 'var(--accent-green)', fontSize: '0.9rem' }}>{teamsFile.name}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>Click to replace</div>
                                         </div>
                                     ) : (
-                                        <div>
+                                        <div className="animate-scale-in">
                                             <div style={{ fontSize: '1.4rem', marginBottom: 4 }}>
                                                 <Upload size={22} color="var(--text-muted)" style={{ display: 'inline' }} />
                                             </div>
@@ -623,7 +667,7 @@ export default function OrganizerDashboard() {
                                 </div>
                                 {teamsFile && (
                                     <button
-                                        type="button" className="btn btn-ghost btn-sm"
+                                        type="button" className="btn btn-ghost btn-sm animate-fade-in"
                                         style={{ marginTop: 6, color: 'var(--accent-red)' }}
                                         onClick={() => { setTeamsFile(null); teamsFileRef.current.value = ''; }}
                                     >

@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 const Submission = require('../models/Submission');
+const TimelineEvent = require('../models/TimelineEvent');
 
 const router = express.Router();
 
@@ -91,6 +92,10 @@ router.post('/file', tempUpload.single('file'), async (req, res) => {
         originalFileName: submission.originalFileName
       }
     });
+
+    // ── Timeline: VERIFICATION_CHECKED ──
+    TimelineEvent.create({ submission: submission._id, eventType: 'VERIFICATION_CHECKED', details: `File verification: ${isMatch ? 'MATCH' : 'MISMATCH'}` })
+      .catch(err => console.error('[Timeline] Error:', err.message));
   } catch (err) {
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
@@ -177,6 +182,10 @@ router.post('/hash', async (req, res) => {
         teamName: submission.teamName
       }
     });
+
+    // ── Timeline: VERIFICATION_CHECKED ──
+    TimelineEvent.create({ submission: submission._id, eventType: 'VERIFICATION_CHECKED', details: `Hash verification: ${isMatch ? 'MATCH' : 'MISMATCH'}` })
+      .catch(err => console.error('[Timeline] Error:', err.message));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

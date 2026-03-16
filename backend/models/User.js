@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  subscription: {
+    type: String,
+    enum: ['free', 'builder', 'organizer', 'integrity'],
+    default: 'free'
   }
 }, {
   timestamps: true
