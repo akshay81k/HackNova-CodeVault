@@ -53,14 +53,15 @@ const upload = multer({
 const hashFile = (filePath) => {
   return new Promise((resolve, reject) => {
     const hash   = crypto.createHash('sha256');
-    const stream = fs.createReadStream(filePath);
+    // Using a larger buffer size (256KB) for faster hashing
+    const stream = fs.createReadStream(filePath, { highWaterMark: 256 * 1024 });
     stream.on('data', (chunk) => hash.update(chunk));
     stream.on('end',  () => resolve(hash.digest('hex')));
     stream.on('error', reject);
   });
 };
 
-// Generate unique verification ID
+// ... (keep generateVerificationId and safeUnlink as they were)
 const generateVerificationId = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let id = 'HN-';
@@ -70,7 +71,6 @@ const generateVerificationId = () => {
   return id;
 };
 
-// Helper: safely delete a local file
 const safeUnlink = (filePath) => {
   try {
     if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -79,10 +79,8 @@ const safeUnlink = (filePath) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // @route   POST /api/submissions
-// @desc    Submit a ZIP for an event. After hashing the file is uploaded to S3.
-//          The S3 key is stored in MongoDB; the local temp file is removed.
-// @body    { eventId, teamId, teamName?, notes? }
-// @access  User (team leader)
+// @desc    Submit a ZIP for an event. Optimized: parallelized tasks and 
+//          background processing for slow operations.
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/', protect, authorize('user'), upload.single('gitFile'), async (req, res) => {
   const filePath = req.file ? req.file.path : null;
@@ -97,14 +95,9 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
 
     const { eventId, teamId, teamName, notes } = req.body;
 
-    if (!eventId) {
+    if (!eventId || !teamId) {
       safeUnlink(filePath);
-      return res.status(400).json({ success: false, message: 'Event ID is required.' });
-    }
-
-    if (!teamId) {
-      safeUnlink(filePath);
-      return res.status(400).json({ success: false, message: 'teamId is required.' });
+      return res.status(400).json({ success: false, message: 'Event ID and teamId are required.' });
     }
 
     // Validate event
@@ -120,8 +113,7 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
     }
 
     const now = new Date();
-    const isBeforeDeadline = now <= event.deadline;
-    if (!isBeforeDeadline) {
+    if (now > event.deadline) {
       safeUnlink(filePath);
       return res.status(400).json({
         success: false,
@@ -129,75 +121,49 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       });
     }
 
-    // Count existing submissions for this user+event (for submissionNumber tracking)
-    const previousCount = await Submission.countDocuments({ event: eventId, submittedBy: req.user._id });
-    const submissionNumber = previousCount + 1;
-
-    // Step 1: SHA-256 of the raw uploaded file
-    const sha256Hash       = await hashFile(filePath);
+    // Prepare non-blocking tasks
     const trustedTimestamp = now;
     const timestampISO     = trustedTimestamp.toISOString();
 
-    // Step 2: Extract ZIP → find .git → hash it
-    let gitHash = null;
-    try {
-      gitHash = await computeGitHash(filePath);
-    } catch (gitErr) {
-      console.error('[Submission] .git hash failed (non-fatal):', gitErr.message);
-    }
+    // Step 1: Start all heavy tasks in parallel
+    console.log(`[Submission] Starting parallel processing for team ${teamId}...`);
+    
+    // Hashing tasks (wait for these)
+    const sha256Promise = hashFile(filePath);
+    const gitHashPromise = computeGitHash(filePath).catch(err => {
+      console.error('[Submission] .git hash failed:', err.message);
+      return null;
+    });
 
-    // Step 2.5: ML Classification
-    let mlCategory = null;
-    let mlConfidence = null;
-    try {
-      console.log(`[Submission] Running ML classification on ${filePath}...`);
-      const mlResult = await runClassifier(filePath);
-      mlCategory = mlResult.category;
-      mlConfidence = mlResult.confidence;
-      console.log(`[Submission] ML classification successful: ${mlCategory} (${mlConfidence})`);
-    } catch (mlErr) {
-      console.error('[Submission] ML classification failed (non-fatal):', mlErr.message);
-    }
+    // S3 Upload task (wait for this)
+    const s3Key = `submissions/${eventId}/${teamId}/${req.file.filename}`;
+    const s3Promise = uploadFileToS3(filePath, s3Key, 'application/zip').catch(err => {
+      console.error('[Submission] S3 upload failed:', err.message);
+      return null; 
+    });
 
-    // Step 3: Anchor hash on Solana Devnet
-    let blockchainTxId     = null;
-    let blockchainAnchored = false;
-    let blockchainError    = null;
+    // ML Task (background - don't wait for response)
+    const mlPromise = runClassifier(filePath).catch(err => {
+      console.error('[Submission] ML classification failed:', err.message);
+      return null;
+    });
 
-    try {
-      const hashToAnchor = gitHash || sha256Hash;
-      blockchainTxId     = await anchorHashOnSolana(teamId, hashToAnchor, trustedTimestamp);
-      blockchainAnchored = true;
-    } catch (chainErr) {
-      blockchainError = chainErr.message;
-      console.error('[Submission] Solana anchoring failed (non-fatal):', chainErr.message);
-    }
+    // Step 2: Wait ONLY for hashing and S3 upload before replying
+    const [sha256Hash, gitHash, uploadedUrl, previousCount] = await Promise.all([
+      sha256Promise,
+      gitHashPromise,
+      s3Promise,
+      Submission.countDocuments({ event: eventId, submittedBy: req.user._id })
+    ]);
 
-    // Step 4: Upload file to AWS S3
-    console.log(`[Submission] Starting S3 upload for team ${teamId}...`);
-    let fileUrl = null;
-    let s3Key   = null;
-    let s3UploadError = null;
-
-    try {
-      // Key format: submissions/<eventId>/<teamId>/<filename>
-      s3Key   = `submissions/${eventId}/${teamId}/${req.file.filename}`;
-      fileUrl = await uploadFileToS3(filePath, s3Key, 'application/zip');
-      console.log(`[Submission] S3 upload successful. URL: ${fileUrl}`);
-    } catch (s3Err) {
-      s3UploadError = s3Err.message;
-      console.error('[Submission] S3 upload failed (non-fatal):', s3Err.message);
-      // Fall back: store local URL so the submission is still usable
+    const submissionNumber = previousCount + 1;
+    let fileUrl = uploadedUrl;
+    if (!fileUrl) {
+      // Fallback to local URL if S3 failed
       fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-      console.log(`[Submission] Using local fallback URL: ${fileUrl}`);
     }
 
-    // Remove local temp file after S3 upload (whether successful or not)
-    if (s3Key && !s3UploadError) {
-      safeUnlink(filePath);
-    }
-
-    // Step 5: Generate unique verification ID
+    // Generate unique verification ID
     let verificationId;
     let unique = false;
     while (!unique) {
@@ -206,78 +172,99 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       if (!existingVid) unique = true;
     }
 
-    // Step 6: Save everything to MongoDB
-    console.log(`[Submission] Saving record to MongoDB for team ${teamId}...`);
+    // Step 3: Save initial record to MongoDB
     const submission = await Submission.create({
-      event:     eventId,
+      event: eventId,
       submittedBy: req.user._id,
       teamId,
-      teamName:  teamName || req.user.name,
+      teamName: teamName || req.user.name,
       originalFileName: req.file.originalname,
-      storedFileName:   req.file.filename,
-      fileSize:  req.file.size,
+      storedFileName: req.file.filename,
+      fileSize: req.file.size,
       fileUrl,
       s3Key,
-
       sha256Hash,
       gitHash,
-
       trustedTimestamp,
       timestampISO,
-
       verificationId,
-      submittedBeforeDeadline: isBeforeDeadline,
+      submittedBeforeDeadline: true,
       notes: notes || '',
-
       submissionNumber,
-
-      blockchainTxId,
-      blockchainAnchored,
-      blockchainError,
-
-      mlCategory,
-      mlConfidence,
+      blockchainAnchored: false, // Updated in background
+      mlCategory: null,          // Updated in background
+      mlConfidence: null         // Updated in background
     });
-    console.log(`[Submission] MongoDB record created: ${submission._id}`);
 
     await submission.populate([
-      { path: 'event',        select: 'title deadline' },
-      { path: 'submittedBy',  select: 'name email' }
+      { path: 'event', select: 'title deadline' },
+      { path: 'submittedBy', select: 'name email' }
     ]);
 
-    return res.status(201).json({
+    // Step 4: Respond quickly to the client
+    res.status(201).json({
       success: true,
       message: submissionNumber === 1
-        ? 'Submission received, hashed, and anchored on the blockchain.'
-        : `Re-submission #${submissionNumber} received and anchored on the blockchain.`,
+        ? 'Submission received and processing in background.'
+        : `Re-submission #${submissionNumber} received and processing in background.`,
       submission: {
-        id:             submission._id,
+        id: submission._id,
         verificationId: submission.verificationId,
-        sha256Hash:     submission.sha256Hash,
-        gitHash:        submission.gitHash,
+        sha256Hash: submission.sha256Hash,
+        gitHash: submission.gitHash,
         trustedTimestamp: submission.timestampISO,
-        teamId:         submission.teamId,
-        teamName:       submission.teamName,
+        teamId: submission.teamId,
+        teamName: submission.teamName,
         originalFileName: submission.originalFileName,
-        fileSize:       submission.fileSize,
-        fileUrl:        submission.fileUrl,
-        s3Key:          submission.s3Key,
+        fileSize: submission.fileSize,
+        fileUrl: submission.fileUrl,
+        s3Key: submission.s3Key,
         submissionNumber: submission.submissionNumber,
-        blockchainTxId: submission.blockchainTxId,
-        blockchainAnchored: submission.blockchainAnchored,
-        blockchainError: submission.blockchainError,
-        mlCategory: submission.mlCategory,
-        mlConfidence: submission.mlConfidence,
-        solanaTxUrl: submission.blockchainTxId
-          ? `https://explorer.solana.com/tx/${submission.blockchainTxId}?cluster=devnet`
-          : null,
-        event:       submission.event,
+        blockchainAnchored: false,
+        mlCategory: null,
+        event: submission.event,
         submittedBy: submission.submittedBy
       }
     });
+
+    // Step 5: Finalize slow tasks in the background
+    (async () => {
+      try {
+        console.log(`[Submission] [Background] Finalizing tasks for ${submission._id}...`);
+        
+        // Run Solana anchoring and wait for ML classifier
+        const [mlResult, blockchainTxId] = await Promise.all([
+          mlPromise,
+          anchorHashOnSolana(teamId, gitHash || sha256Hash, trustedTimestamp).catch(err => {
+            console.error('[Submission] [Background] Solana anchoring failed:', err.message);
+            return null;
+          })
+        ]);
+
+        const updateData = {};
+        if (mlResult) {
+          updateData.mlCategory = mlResult.category;
+          updateData.mlConfidence = mlResult.confidence;
+        }
+        if (blockchainTxId) {
+          updateData.blockchainTxId = blockchainTxId;
+          updateData.blockchainAnchored = true;
+        } else {
+          updateData.blockchainError = 'Background anchoring failed or was partially successful without confirmation';
+        }
+
+        await Submission.findByIdAndUpdate(submission._id, updateData);
+        console.log(`[Submission] [Background] Tasks complete for ${submission._id}.`);
+      } catch (bgErr) {
+        console.error(`[Submission] [Background] Error: ${bgErr.message}`);
+      } finally {
+        // Only delete local file once S3, Hashing, and ML are ALL finished
+        safeUnlink(filePath);
+      }
+    })();
+
   } catch (err) {
     console.error(`[Submission] CRITICAL ERROR: ${err.message}`);
-    console.error(err.stack);
     safeUnlink(filePath);
     res.status(500).json({ success: false, message: err.message });
   }
