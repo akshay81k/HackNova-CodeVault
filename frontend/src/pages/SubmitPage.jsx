@@ -110,11 +110,19 @@ export default function SubmitPage() {
     const copyToClipboard = (text) => navigator.clipboard.writeText(text);
 
     if (fetchLoading) return (
-        <div className="dashboard"><Navbar /><div style={{ textAlign: 'center', padding: 100 }}><div className="spinner" style={{ margin: '0 auto' }} /></div></div>
+        <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
+            <Navbar />
+            <div style={{ textAlign: 'center', padding: 100 }}>
+                <div className="spinner" style={{ margin: '0 auto' }} />
+            </div>
+        </div>
     );
 
     if (!event) return (
-        <div className="dashboard"><Navbar />
+        <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
+            <Navbar />
             <div style={{ textAlign: 'center', padding: 80 }}>
                 <div style={{ fontSize: '2rem', marginBottom: 12 }}>⚠️</div>
                 <div style={{ color: 'var(--text-secondary)' }}>{error || 'Event not found'}</div>
@@ -126,7 +134,8 @@ export default function SubmitPage() {
     const expired = event.isExpired;
 
     return (
-        <div className="dashboard">
+        <div className="page-wrapper dashboard-page" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
             <div className="dashboard-main" style={{ maxWidth: 700 }}>
                 {/* Header */}

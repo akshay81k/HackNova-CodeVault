@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
+import InteractiveBackground from '../components/InteractiveBackground';
+import { useAuth } from '../context/AuthContext';
 import {
     Plus, Calendar, FileText, X, ChevronDown,
     Upload, Users, Download, ExternalLink, Copy,
@@ -143,7 +145,8 @@ export default function OrganizerDashboard() {
     const activeCount = events.filter(e => !e.isExpired).length;
 
     return (
-        <div className="dashboard">
+        <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
             <div className="dashboard-main">
 

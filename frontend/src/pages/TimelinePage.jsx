@@ -50,7 +50,8 @@ export default function TimelinePage() {
         new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium' });
 
     return (
-        <div className="dashboard">
+        <div className="page-wrapper dashboard-page" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
             <div className="dashboard-main">
                 {/* Header */}

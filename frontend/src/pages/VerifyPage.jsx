@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
+import InteractiveBackground from '../components/InteractiveBackground';
 import { Search, Upload, Hash, Copy, CheckCircle, XCircle, FileDiff } from 'lucide-react';
 
 export default function VerifyPage() {
@@ -111,7 +112,8 @@ export default function VerifyPage() {
     };
 
     return (
-        <div className="page-wrapper">
+        <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
             <div style={{ maxWidth: 700, margin: '0 auto', padding: '40px 24px' }}>
                 {/* Header */}

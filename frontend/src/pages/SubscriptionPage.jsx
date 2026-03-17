@@ -205,7 +205,8 @@ export default function SubscriptionPage() {
 
     if (status === 'success') {
         return (
-            <div className="page-wrapper" style={{ background: 'var(--bg-primary)', minHeight: '100vh' }}>
+            <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+                <InteractiveBackground />
                 <Navbar />
                 <div className="container" style={{ 
                     display: 'flex', 
@@ -237,7 +238,8 @@ export default function SubscriptionPage() {
     }
 
     return (
-        <div className="page-wrapper" style={{ background: 'var(--bg-primary)', minHeight: '100vh', paddingBottom: 100 }}>
+        <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
 
             <div className="container" style={{ marginTop: 60, textAlign: 'center' }}>

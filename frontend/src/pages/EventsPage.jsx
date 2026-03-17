@@ -3,7 +3,8 @@ import API from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Search, Clock, Users, ArrowRight } from 'lucide-react';
+import InteractiveBackground from '../components/InteractiveBackground';
+import { Search, Users, Calendar, MapPin, Filter, Loader2, Sparkles } from 'lucide-react';
 
 export default function EventsPage() {
     const [events, setEvents] = useState([]);
@@ -48,7 +49,8 @@ export default function EventsPage() {
     };
 
     return (
-        <div className="page-wrapper">
+        <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
             <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
                 <div style={{ marginBottom: 32 }}>

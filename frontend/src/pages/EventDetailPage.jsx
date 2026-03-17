@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import Navbar from '../components/Navbar';
+import InteractiveBackground from '../components/InteractiveBackground';
 import {
     Upload, CheckCircle, AlertTriangle, Clock, Copy,
     ShieldCheck, ShieldX, Loader, ArrowLeft, Users, Download
@@ -196,7 +197,8 @@ export default function EventDetailPage() {
     const expired = event.isExpired;
 
     return (
-        <div className="dashboard">
+        <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
             <div className="dashboard-main" style={{ maxWidth: 720 }}>
 

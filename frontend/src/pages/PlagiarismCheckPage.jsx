@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
+import InteractiveBackground from '../components/InteractiveBackground';
 import {
   ArrowLeft, Search, FileCode, AlertTriangle,
   CheckCircle, XCircle, ChevronDown, ChevronUp,
@@ -102,7 +103,8 @@ export default function PlagiarismCheckPage() {
   const teams = Object.values(teamMap);
 
   return (
-    <div className="dashboard">
+    <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+      <InteractiveBackground />
       <Navbar />
       <div className="dashboard-main">
 

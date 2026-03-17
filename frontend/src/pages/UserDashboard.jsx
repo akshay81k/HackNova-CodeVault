@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import InteractiveBackground from '../components/InteractiveBackground';
 import { FileText, Clock, CheckCircle, Search, ExternalLink } from 'lucide-react';
 
 export default function UserDashboard() {
@@ -43,7 +44,8 @@ export default function UserDashboard() {
     ).length;
 
     return (
-        <div className="dashboard">
+        <div className="page-wrapper dashboard-page" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
             <div className="dashboard-main">
                 <div style={{ marginBottom: 32 }}>

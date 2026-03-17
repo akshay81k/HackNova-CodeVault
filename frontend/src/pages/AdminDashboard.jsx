@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
+import InteractiveBackground from '../components/InteractiveBackground';
 import { Users, Calendar, FileText, Activity, Trash2, Clock } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -47,7 +48,8 @@ export default function AdminDashboard() {
     const formatDate = (d) => new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
     return (
-        <div className="dashboard">
+        <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
+            <InteractiveBackground />
             <Navbar />
             <div className="dashboard-main">
                 <div style={{ marginBottom: 32 }}>
