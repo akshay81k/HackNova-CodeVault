@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import InteractiveBackground from '../components/InteractiveBackground';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import { Check, Shield, Zap, Crown, Star, X, AlertCircle } from 'lucide-react';

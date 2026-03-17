@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import InteractiveBackground from '../components/InteractiveBackground';
-import { Search, Users, Calendar, MapPin, Filter, Loader2, Sparkles } from 'lucide-react';
+import { Search, Users, Calendar, MapPin, Filter, Loader2, Sparkles, Clock, ArrowRight } from 'lucide-react';
 
 export default function EventsPage() {
     const [events, setEvents] = useState([]);

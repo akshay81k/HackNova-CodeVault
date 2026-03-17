@@ -1219,8 +1219,14 @@ tbody tr:hover { background: rgba(255,255,255,0.02); }
   max-width: 520px;
   max-height: 90vh;
   overflow-y: auto;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
   box-shadow: var(--shadow-lg);
   animation: fadeInUp 0.3s ease;
+}
+
+.modal::-webkit-scrollbar {
+  display: none;                /* Chrome, Safari, Opera */
 }
 
 .modal-header {

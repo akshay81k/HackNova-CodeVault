@@ -19,15 +19,20 @@ export default function InteractiveBackground() {
         ];
 
         const mouse = { x: -1000, y: -1000 };
+        let isOverContainer = false;
         const glowRadius = 180;
 
         const handleMouseMove = (e) => {
             mouse.x = e.clientX;
             mouse.y = e.clientY;
+            
+            const target = document.elementFromPoint(e.clientX, e.clientY);
+            isOverContainer = !!target?.closest('.card, .auth-box, .stat-card, .table-wrapper, .modal, .navbar, .hero, .cta-card, .dashboard-main, .upload-zone, .alert, .footer-new, .landing-section-header, .event-card, .timeline-container');
         };
         const handleMouseLeave = () => {
             mouse.x = -1000;
             mouse.y = -1000;
+            isOverContainer = false;
         };
         window.addEventListener('mousemove', handleMouseMove);
         document.body.addEventListener('mouseleave', handleMouseLeave);
@@ -60,8 +65,12 @@ export default function InteractiveBackground() {
         window.addEventListener('resize', resize);
         resize();
 
+        let suppression = 0;
         const animate = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const targetSuppression = isOverContainer ? 1 : 0;
+            suppression += (targetSuppression - suppression) * 0.1;
 
             for (let i = 0; i < codeChars.length; i++) {
                 const c = codeChars[i];
@@ -69,25 +78,27 @@ export default function InteractiveBackground() {
                 const dy = mouse.y - c.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                const targetGlow = distance < glowRadius
+                const targetGlow = distance < glowRadius && !isOverContainer
                     ? Math.pow(1 - distance / glowRadius, 1.5)
                     : 0;
                 c.glowIntensity += (targetGlow - c.glowIntensity) * 0.1;
 
-                const opacity = c.baseOpacity + c.glowIntensity * 0.92;
+                const opacity = (c.baseOpacity + c.glowIntensity * 0.92) * (1 - suppression * 0.85);
                 const currentFontSize = c.fontSize * (1 + c.glowIntensity * 0.5);
 
+                const intensity = c.glowIntensity * (1 - suppression * 1.0);
+
                 // Punchier colors on hover - original blue/cyan tones
-                const r = Math.round(15 + c.glowIntensity * 120); 
-                const g = Math.round(45 + c.glowIntensity * 180); 
-                const b = Math.round(110 + c.glowIntensity * 145); 
+                const r = Math.round(15 + intensity * 120); 
+                const g = Math.round(45 + intensity * 180); 
+                const b = Math.round(110 + intensity * 145); 
 
                 ctx.font = `${currentFontSize}px 'JetBrains Mono', monospace`;
                 ctx.textAlign = 'center';
 
-                if (c.glowIntensity > 0.1) {
-                    ctx.shadowColor = `rgba(0, 240, 255, ${c.glowIntensity * 1.0})`;
-                    ctx.shadowBlur = 15 + c.glowIntensity * 30;
+                if (intensity > 0.1) {
+                    ctx.shadowColor = `rgba(0, 240, 255, ${intensity * 1.0})`;
+                    ctx.shadowBlur = 15 + intensity * 30;
                 } else {
                     ctx.shadowColor = 'transparent';
                     ctx.shadowBlur = 0;

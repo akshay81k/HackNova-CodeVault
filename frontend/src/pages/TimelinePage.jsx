@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
+import InteractiveBackground from '../components/InteractiveBackground';
 import {
     ArrowLeft, Upload, Hash, LinkIcon, Brain, Search, ShieldCheck,
     Clock, CheckCircle, AlertCircle, FileText
