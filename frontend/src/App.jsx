@@ -92,9 +92,12 @@ function AppRoutes() {
 }
 
 function App() {
+  const [showLoader, setShowLoader] = useState(true);
+
   return (
     <AuthProvider>
       <BrowserRouter>
+        {showLoader && <VaultLoader onComplete={() => setShowLoader(false)} />}
         <AppRoutes />
       </BrowserRouter>
     </AuthProvider>

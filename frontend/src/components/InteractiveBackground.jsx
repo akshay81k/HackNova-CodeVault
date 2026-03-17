@@ -19,7 +19,7 @@ export default function InteractiveBackground() {
         ];
 
         const mouse = { x: -1000, y: -1000 };
-        const glowRadius = 250;
+        const glowRadius = 180;
 
         const handleMouseMove = (e) => {
             mouse.x = e.clientX;
@@ -34,19 +34,19 @@ export default function InteractiveBackground() {
 
         const buildGrid = () => {
             codeChars = [];
-            const cols = Math.floor(canvas.width / 65);
-            const rows = Math.floor(canvas.height / 55);
+            const cols = Math.floor(canvas.width / 45);
+            const rows = Math.floor(canvas.height / 40);
 
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
                     codeChars.push({
-                        x: col * 65 + 32 + (Math.random() - 0.5) * 20,
-                        y: row * 55 + 27 + (Math.random() - 0.5) * 15,
+                        x: col * 45 + 22 + (Math.random() - 0.5) * 15,
+                        y: row * 40 + 20 + (Math.random() - 0.5) * 10,
                         char: codeSnippets[Math.floor(Math.random() * codeSnippets.length)],
                         baseOpacity: Math.random() * 0.08 + 0.03,
                         currentOpacity: 0,
                         glowIntensity: 0,
-                        fontSize: Math.random() * 6 + 14,
+                        fontSize: Math.random() * 4 + 9,
                     });
                 }
             }
@@ -77,17 +77,17 @@ export default function InteractiveBackground() {
                 const opacity = c.baseOpacity + c.glowIntensity * 0.92;
                 const currentFontSize = c.fontSize * (1 + c.glowIntensity * 0.5);
 
-                // Punchier colors on hover
-                const r = Math.round(15 + c.glowIntensity * 120); // More white/blue
-                const g = Math.round(45 + c.glowIntensity * 180); // Brighter cyan
-                const b = Math.round(110 + c.glowIntensity * 145); // Brighter deep blue
+                // Punchier colors on hover - original blue/cyan tones
+                const r = Math.round(15 + c.glowIntensity * 120); 
+                const g = Math.round(45 + c.glowIntensity * 180); 
+                const b = Math.round(110 + c.glowIntensity * 145); 
 
                 ctx.font = `${currentFontSize}px 'JetBrains Mono', monospace`;
                 ctx.textAlign = 'center';
 
                 if (c.glowIntensity > 0.1) {
-                    ctx.shadowColor = `rgba(6, 182, 212, ${c.glowIntensity * 0.8})`;
-                    ctx.shadowBlur = 10 + c.glowIntensity * 25;
+                    ctx.shadowColor = `rgba(0, 240, 255, ${c.glowIntensity * 1.0})`;
+                    ctx.shadowBlur = 15 + c.glowIntensity * 30;
                 } else {
                     ctx.shadowColor = 'transparent';
                     ctx.shadowBlur = 0;

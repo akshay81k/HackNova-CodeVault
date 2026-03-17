@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, Sparkles, Shield, Github, Twitter, Mail, ExternalLink, ChevronRight } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import InteractiveBackground from '../components/InteractiveBackground';
+import { RealisticVaultIcon } from '../components/Icons';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -111,29 +112,29 @@ export default function LandingPage() {
                 duration: 0.6,
                 scale: 0.9,
             })
-            .from(titleRef.current, {
-                y: 40,
-                opacity: 0,
-                duration: 0.8,
-                scale: 0.95,
-            }, '-=0.3')
-            .from(subtitleRef.current, {
-                y: 20,
-                opacity: 0,
-                duration: 0.6,
-            }, '-=0.4')
-            .from(actionsRef.current?.children || [], {
-                y: 20,
-                opacity: 0,
-                stagger: 0.12,
-                duration: 0.5,
-            }, '-=0.3')
-            .from(statsRef.current?.children || [], {
-                y: 15,
-                opacity: 0,
-                stagger: 0.1,
-                duration: 0.4,
-            }, '-=0.2');
+                .from(titleRef.current, {
+                    y: 40,
+                    opacity: 0,
+                    duration: 0.8,
+                    scale: 0.95,
+                }, '-=0.3')
+                .from(subtitleRef.current, {
+                    y: 20,
+                    opacity: 0,
+                    duration: 0.6,
+                }, '-=0.4')
+                .from(actionsRef.current?.children || [], {
+                    y: 20,
+                    opacity: 0,
+                    stagger: 0.12,
+                    duration: 0.5,
+                }, '-=0.3')
+                .from(statsRef.current?.children || [], {
+                    y: 15,
+                    opacity: 0,
+                    stagger: 0.1,
+                    duration: 0.4,
+                }, '-=0.2');
 
             /* ── Feature cards ── */
             if (featureHeaderRef.current) {
@@ -308,9 +309,9 @@ export default function LandingPage() {
             {/* ═══════════ 4. FOOTER ═══════════ */}
             <footer className="footer-new" ref={footerRef}>
                 <div className="pre-footer">
-                    <h2 className="pre-footer-title">Ready to secure your next event?</h2>
+                    <h2 className="pre-footer-title">Join Code Vault Today</h2>
                     <p style={{ color: 'var(--text-muted)', maxWidth: 600, margin: '0 auto' }}>
-                        Join hundreds of hackathon organizers who trust CodeVault for cryptographic submission integrity.
+                        Join hundreds of hackathon organizers and participants who trust CodeVault for cryptographic submission integrity.
                     </p>
                     <button className="pre-footer-btn" onClick={() => navigate('/register')}>
                         Get Started for Free
@@ -320,7 +321,7 @@ export default function LandingPage() {
                 <div className="footer-grid">
                     <div className="footer-brand">
                         <div className="footer-brand-name">
-                            🛡️ Code<span className="accent">Vault</span>
+                            <RealisticVaultIcon size={24} color="var(--accent-blue-light)" />Code<span className="accent">Vault</span>
                         </div>
                         <p className="footer-brand-desc">
                             Cryptographic submission integrity for hackathons. Every upload is hashed, timestamped, and independently verifiable.
