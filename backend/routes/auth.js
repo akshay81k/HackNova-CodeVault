@@ -42,10 +42,6 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required.' });
     }
 
-    if (!await verifyTurnstile(turnstileToken)) {
-      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
-    }
-
     // Only allow organizer or user registration publicly
     const allowedRoles = ['organizer', 'user'];
     const userRole = role && allowedRoles.includes(role) ? role : 'user';
@@ -91,10 +87,6 @@ router.post('/login', async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
-    }
-
-    if (!await verifyTurnstile(turnstileToken)) {
-      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
     }
 
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
@@ -183,11 +175,7 @@ router.post('/admin/create', async (req, res) => {
 // @access  Public
 router.post('/google', async (req, res) => {
   try {
-    const { googleToken, turnstileToken, role, organization } = req.body;
-
-    if (!await verifyTurnstile(turnstileToken)) {
-      return res.status(400).json({ success: false, message: 'CAPTCHA verification failed.' });
-    }
+    const { googleToken, role, organization } = req.body;
 
     const ticket = await googleClient.verifyIdToken({
       idToken: googleToken,
@@ -206,7 +194,7 @@ router.post('/google', async (req, res) => {
       const userRole = role && allowedRoles.includes(role) ? role : 'user';
       // Create a random safe password for the auto-created account
       const randomPass = require('crypto').randomBytes(12).toString('hex');
-      
+
       user = await User.create({
         name: payload.name,
         email: payload.email,
