@@ -151,24 +151,32 @@ export default function OrganizerDashboard() {
             <div className="dashboard-main">
 
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-                    <div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-                            Organizer Panel
+                <div style={{ marginBottom: 40 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--accent-blue-light)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+                                Organizer Command Center
+                            </div>
+                            <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #fff 0%, #a5b4fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                My Events
+                            </h1>
+                            <p style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: '0.95rem' }}>
+                                Manage your hackathons and secure submission pipelines.
+                            </p>
                         </div>
-                        <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>My Events</h1>
-                        <p style={{ color: 'var(--text-secondary)', marginTop: 4 }}>
-                            Create and manage hackathon events · Download submissions via AWS S3
-                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <button className="btn btn-premium-purple pulse-purple" onClick={() => navigate('/subscription')} style={{ padding: '12px 24px' }}>
+                                <Crown size={18} /> Upgrade Plan
+                            </button>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                        <button className="btn btn-secondary" onClick={() => navigate('/subscription')} style={{ border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)' }}>
-                            <Crown size={16} style={{ marginRight: 6 }} /> Upgrade Plan
-                        </button>
-                        <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-                            <Plus size={16} /> Create Event
-                        </button>
-                    </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Dashboard Overview</div>
+                    <button className="btn btn-premium-blue" onClick={() => setShowCreateModal(true)} style={{ padding: '12px 24px', borderRadius: '14px' }}>
+                        <Plus size={20} strokeWidth={3} /> Create New Event
+                    </button>
                 </div>
 
                 {/* Stats */}
@@ -225,7 +233,7 @@ export default function OrganizerDashboard() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                                             <span style={{ fontWeight: 700, fontSize: '1rem' }}>{ev.title}</span>
                                             <span className={`status-badge ${ev.isExpired ? 'status-expired' : 'status-active'}`}>
-                                                {ev.isExpired ? '⏰ Expired' : '✅ Active'}
+                                                {ev.isExpired ? 'Expired' : 'Active'}
                                             </span>
                                             {ev.teamsFileName && (
                                                 <span className="status-badge" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', border: '1px solid rgba(16,185,129,0.3)' }}>
@@ -543,7 +551,7 @@ export default function OrganizerDashboard() {
                                                                             }}
                                                                             onClick={() => navigate(`/timeline/${s._id}`)}
                                                                         >
-                                                                            <Clock size={12} /> 📜 Timeline
+                                                                            <Clock size={12} /> Timeline
                                                                         </button>
                                                                     </td>
                                                                 </tr>
@@ -574,7 +582,7 @@ export default function OrganizerDashboard() {
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Create New Event</h2>
                             <button className="btn btn-ghost" onClick={handleCloseModal}><X size={18} /></button>
                         </div>
-                        {formError && <div className="alert alert-error">⚠️ {formError}</div>}
+                        {formError && <div className="alert alert-error"><AlertCircle size={14} /> {formError}</div>}
                         <form onSubmit={handleCreate}>
                             <div className="form-group">
                                 <label className="form-label">Event Title</label>
@@ -674,7 +682,7 @@ export default function OrganizerDashboard() {
                                         style={{ marginTop: 6, color: 'var(--accent-red)' }}
                                         onClick={() => { setTeamsFile(null); teamsFileRef.current.value = ''; }}
                                     >
-                                        ✕ Remove file
+                                        Remove file
                                     </button>
                                 )}
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
@@ -687,7 +695,7 @@ export default function OrganizerDashboard() {
                                 <button type="submit" className="btn btn-primary" disabled={creating} style={{ flex: 1 }}>
                                     {creating
                                         ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-                                        : '✅ Create Event'}
+                                        : 'Create Event'}
                                 </button>
                                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
                             </div>

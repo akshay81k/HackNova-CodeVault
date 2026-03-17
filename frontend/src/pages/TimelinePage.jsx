@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
@@ -26,6 +27,10 @@ export default function TimelinePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    const timelineContainerRef = useRef(null);
+    const lineRef = useRef(null);
+    const eventRefs = useRef([]);
+
     useEffect(() => {
         loadTimeline();
     }, [submissionId]);
@@ -47,6 +52,44 @@ export default function TimelinePage() {
         }
     };
 
+    useEffect(() => {
+        // Run animation when events successfully load
+        if (!loading && events.length > 0 && timelineContainerRef.current) {
+            const tl = gsap.timeline();
+            
+            // 1. Fade the container in
+            tl.fromTo(timelineContainerRef.current,
+                { opacity: 0, y: 30 },
+                { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }
+            );
+
+            // 2. Draw the vertical line down
+            if (lineRef.current) {
+                tl.fromTo(lineRef.current,
+                    { scaleY: 0, transformOrigin: "top" },
+                    { scaleY: 1, duration: 0.8, ease: "power2.inOut" },
+                    "-=0.2" // slight overlap
+                );
+            }
+
+            // 3. Stagger pop-in the dots
+            const dots = eventRefs.current.map(el => el?.querySelector('.timeline-dot'));
+            tl.fromTo(dots,
+                { scale: 0, opacity: 0 },
+                { scale: 1, opacity: 1, duration: 0.5, stagger: 0.15, ease: "back.out(1.7)" },
+                "-=0.4"
+            );
+
+            // 4. Stagger slide-in the event cards
+            const cards = eventRefs.current.map(el => el?.querySelector('.timeline-card'));
+            tl.fromTo(cards,
+                { x: 40, opacity: 0 },
+                { x: 0, opacity: 1, duration: 0.6, stagger: 0.15, ease: "power3.out" },
+                "-=0.7" // Start sliding cards as dots are popping in
+            );
+        }
+    }, [loading, events]);
+
     const formatTime = (d) =>
         new Date(d).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'medium' });
 
@@ -56,20 +99,22 @@ export default function TimelinePage() {
             <Navbar />
             <div className="dashboard-main">
                 {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }} className="animate-slide-down">
                     <button
-                        className="btn btn-secondary btn-sm"
+                        className="btn btn-breadcrumb"
                         onClick={() => navigate(-1)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5 }}
                     >
-                        <ArrowLeft size={15} /> Back
+                        <ArrowLeft size={14} /> Back to Dashboard
                     </button>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }} className="animate-slide-down">
                     <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--accent-blue-light)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
                             Forensic Timeline
                         </div>
-                        <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-                            📜 Chain of Custody
+                        <h1 style={{ fontSize: '2.5rem', fontWeight: 900, background: 'linear-gradient(135deg, #fff 0%, #a5b4fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Clock size={32} color="var(--accent-blue-light)" /> Chain of Custody
                         </h1>
                     </div>
                 </div>
@@ -124,18 +169,19 @@ export default function TimelinePage() {
                     </div>
                 ) : (
                     /* Timeline */
-                    <div className="card" style={{ padding: '28px 32px' }}>
-                        <div style={{ position: 'relative', paddingLeft: 40 }}>
+                    <div ref={timelineContainerRef} className="card" style={{ padding: '32px 40px', background: 'rgba(13, 31, 60, 0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', opacity: 0 }}>
+                        <div style={{ position: 'relative', paddingLeft: 44 }}>
                             {/* Vertical line */}
-                            <div style={{
+                            <div ref={lineRef} style={{
                                 position: 'absolute',
                                 left: 15,
-                                top: 8,
-                                bottom: 8,
-                                width: 2,
+                                top: 12,
+                                bottom: 12,
+                                width: 3,
                                 background: 'linear-gradient(180deg, var(--accent-blue-light) 0%, var(--accent-green) 50%, var(--accent-purple) 100%)',
-                                borderRadius: 2,
-                                opacity: 0.4
+                                borderRadius: 3,
+                                opacity: 0.6,
+                                boxShadow: '0 0 10px rgba(56, 189, 248, 0.3)'
                             }} />
 
                             {events.map((ev, idx) => {
@@ -144,40 +190,52 @@ export default function TimelinePage() {
                                 return (
                                     <div
                                         key={ev._id || idx}
+                                        ref={el => eventRefs.current[idx] = el}
                                         style={{
                                             position: 'relative',
-                                            marginBottom: idx < events.length - 1 ? 28 : 0,
-                                            animation: `fadeIn 0.4s ease ${idx * 0.08}s both`
+                                            marginBottom: idx < events.length - 1 ? 28 : 0
                                         }}
                                     >
                                         {/* Dot / Icon */}
                                         <div style={{
                                             position: 'absolute',
-                                            left: -40,
-                                            top: 2,
-                                            width: 30,
-                                            height: 30,
+                                            left: -44,
+                                            top: -2,
+                                            width: 34,
+                                            height: 34,
                                             borderRadius: '50%',
                                             background: meta.bg,
                                             border: `2px solid ${meta.color}`,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            zIndex: 1
-                                        }}>
-                                            <Icon size={14} color={meta.color} />
+                                            zIndex: 2,
+                                            boxShadow: `0 0 15px ${meta.color}40`,
+                                        }} className="timeline-dot">
+                                            <Icon size={16} color={meta.color} />
                                         </div>
 
                                         {/* Content */}
-                                        <div style={{
-                                            background: 'rgba(255,255,255,0.02)',
+                                        <div className="timeline-card" style={{
+                                            background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
                                             border: '1px solid var(--border)',
-                                            borderRadius: 'var(--radius-lg)',
-                                            padding: '14px 18px',
-                                            transition: 'border-color 0.2s, background 0.2s'
+                                            borderRadius: 'var(--radius-xl)',
+                                            padding: '16px 20px',
+                                            transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, border-color 0.2s, background 0.2s',
+                                            cursor: 'default'
                                         }}
-                                            onMouseEnter={e => { e.currentTarget.style.borderColor = meta.color; e.currentTarget.style.background = meta.bg; }}
-                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                                            onMouseEnter={e => { 
+                                                e.currentTarget.style.borderColor = meta.color; 
+                                                e.currentTarget.style.background = `linear-gradient(145deg, ${meta.bg} 0%, rgba(255,255,255,0.01) 100%)`; 
+                                                e.currentTarget.style.transform = 'translateX(4px)';
+                                                e.currentTarget.style.boxShadow = `0 4px 20px ${meta.color}20`;
+                                            }}
+                                            onMouseLeave={e => { 
+                                                e.currentTarget.style.borderColor = 'var(--border)'; 
+                                                e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)'; 
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }}
                                         >
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                                                 <span style={{
@@ -216,11 +274,13 @@ export default function TimelinePage() {
                 )}
             </div>
 
-            {/* Fade-in animation */}
+            {/* Timeline hover animations */}
             <style>{`
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(12px); }
-                    to { opacity: 1; transform: translateY(0); }
+                .timeline-dot {
+                    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+                }
+                .timeline-dot:hover {
+                    transform: scale(1.15);
                 }
             `}</style>
         </div>

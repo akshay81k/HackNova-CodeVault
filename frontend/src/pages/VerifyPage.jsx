@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import InteractiveBackground from '../components/InteractiveBackground';
-import { Search, Upload, Hash, Copy, CheckCircle, XCircle, FileDiff, Download } from 'lucide-react';
+import { Search, Upload, Hash, Copy, CheckCircle, XCircle, FileDiff, RefreshCw, BarChart3, ClipboardList, AlertTriangle, Plus, Trash2, CloudUpload, Info, Download } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -117,31 +117,31 @@ export default function VerifyPage() {
         try {
             console.log("Starting PDF Export...", result);
             if (!result) return;
-            
+
             const doc = new jsPDF();
-            
+
             const primaryColor = [14, 165, 233];
             const textColor = [30, 41, 59];
             const lightText = [100, 116, 139];
-            
+
             let yPos = 20;
 
             doc.setFontSize(22);
             doc.setTextColor(...primaryColor);
             doc.setFont("helvetica", "bold");
             doc.text("Hackathon Submission Verification Report", 14, yPos);
-            
+
             doc.setFontSize(10);
             doc.setTextColor(...lightText);
             doc.setFont("helvetica", "normal");
             yPos += 8;
             doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, yPos);
-            
+
             const refId = result.details?.verificationId || verificationId || "N/A";
             doc.text(`Verification ID: ${refId}`, 196, yPos, { align: "right" });
-            
+
             yPos += 15;
-            
+
             const addSectionTitle = (title) => {
                 doc.setFontSize(14);
                 doc.setTextColor(...primaryColor);
@@ -154,7 +154,7 @@ export default function VerifyPage() {
             };
 
             addSectionTitle("Event Details & Participant Information");
-            
+
             const detailsData = [
                 ["Event Title", result.details?.eventTitle || "-"],
                 ["Team / Participant", result.details?.teamName || result.details?.submittedBy || "-"],
@@ -175,13 +175,13 @@ export default function VerifyPage() {
                     yPos = data.cursor.y;
                 }
             });
-            
+
             yPos = (doc.lastAutoTable ? doc.lastAutoTable.finalY : yPos) + 15;
 
             if (!result.isChangeReport && !result.isLookupOnly) {
                 if (yPos > 250) { doc.addPage(); yPos = 20; }
                 addSectionTitle("Blockchain Integrity Check");
-                
+
                 autoTable(doc, {
                     startY: yPos,
                     body: [
@@ -191,7 +191,7 @@ export default function VerifyPage() {
                     ],
                     theme: 'grid',
                     styles: { fontSize: 10, cellPadding: 5, textColor: textColor },
-                    columnStyles: { 
+                    columnStyles: {
                         0: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 50 },
                         1: { font: 'courier', fontSize: 9, cellWidth: 'wrap' }
                     },
@@ -240,11 +240,11 @@ export default function VerifyPage() {
 
             if (yPos > 240) { doc.addPage(); yPos = 20; }
             addSectionTitle("Verification Conclusion");
-            
+
             doc.setFont("helvetica", "normal");
             doc.setFontSize(10);
             doc.setTextColor(...textColor);
-            
+
             let conclusionText = "";
             if (!result.isChangeReport && !result.isLookupOnly) {
                 if (result.isMatch) {
@@ -262,9 +262,9 @@ export default function VerifyPage() {
                     conclusionText = `File differences were detected between the verified project and the original submission. A total of ${modified} modifications, ${added} additions, and ${deleted} deletions were found. Please review the detailed file lists above to understand the scope of the changes.`;
                 }
             } else {
-                 conclusionText = "This is a public record lookup. No file integrity check or comparison was performed. The data above represents the stored submission metadata on the blockchain.";
+                conclusionText = "This is a public record lookup. No file integrity check or comparison was performed. The data above represents the stored submission metadata on the blockchain.";
             }
-            
+
             const textLines = doc.splitTextToSize(conclusionText, 168);
             doc.text(textLines, 14, yPos);
 
@@ -316,12 +316,12 @@ export default function VerifyPage() {
                 </div>
 
                 {/* Error */}
-                {error && <div className="alert alert-error" style={{ marginBottom: 20 }}>⚠️ {error}</div>}
+                {error && <div className="alert alert-error" style={{ marginBottom: 20 }}><AlertTriangle size={14} /> {error}</div>}
 
                 {/* Result */}
                 {result && !result.isLookupOnly && !result.isChangeReport && (
                     <div className={`verify-result animate-scale-in ${result.isMatch ? 'match' : 'mismatch'}`} style={{ marginBottom: 24 }}>
-                        <div className="verify-icon">{result.isMatch ? '✅' : '❌'}</div>
+                        <div className="verify-icon">{result.isMatch ? <CheckCircle size={28} color="var(--accent-green)" /> : <XCircle size={28} color="var(--accent-red)" />}</div>
                         <div className={`verify-status ${result.isMatch ? 'match' : 'mismatch'}`}>
                             {result.result}
                         </div>
@@ -339,7 +339,7 @@ export default function VerifyPage() {
                                     ['Submitted By', result.details.submittedBy],
                                     ['Team', result.details.teamName],
                                     ['Submission Time', formatDate(result.details.submissionTime)],
-                                    ['Deadline Status', result.details.submittedBeforeDeadline ? '✅ On-time' : '❌ Late'],
+                                    ['Deadline Status', result.details.submittedBeforeDeadline ? 'On-time' : 'Late'],
                                     ['Expected Hash', result.details.expectedHash],
                                     ['Provided Hash', result.details.providedHash],
                                 ].map(([label, value]) => (
@@ -361,7 +361,7 @@ export default function VerifyPage() {
                 {result?.isChangeReport && (
                     <div className="card animate-scale-in" style={{ marginBottom: 24, borderLeft: '4px solid var(--accent-blue)', boxShadow: 'var(--shadow-glow)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                            <div style={{ fontSize: '1.5rem' }}>📊</div>
+                            <BarChart3 size={24} color="var(--accent-blue-light)" />
                             <div>
                                 <div style={{ fontWeight: 800 }}>File Change Report</div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{result.details.teamName} · {result.details.originalFileName}</div>
@@ -388,9 +388,9 @@ export default function VerifyPage() {
                             result.report[type].length > 0 && (
                                 <div key={type} style={{ marginBottom: 20 }}>
                                     <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: type === 'modified' ? '#f59e0b' : type === 'added' ? '#10b981' : '#ef4444', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        {type === 'modified' ? '⚠️' : type === 'added' ? '➕' : '🗑️'} {type} Files
+                                        {type === 'modified' ? <AlertTriangle size={14} /> : type === 'added' ? <Plus size={14} /> : <Trash2 size={14} />} {type} Files
                                     </h3>
-                                    <div style={{ maxHeight: 200, overflowY: 'auto', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', padding: 10 }}>
+                                    <div className="scrollbar-hidden" style={{ maxHeight: 200, overflowY: 'auto', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', padding: 10 }}>
                                         {result.report[type].map(f => (
                                             <div key={f} className="mono" style={{ fontSize: '0.75rem', padding: '6px 4px', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}>{f}</div>
                                         ))}
@@ -401,7 +401,7 @@ export default function VerifyPage() {
 
                         {result.report.modified.length === 0 && result.report.added.length === 0 && result.report.deleted.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--accent-green)', fontWeight: 600 }}>
-                                ✅ No changes detected! Project is identical to submission.
+                                <CheckCircle size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} /> No changes detected! Project is identical to submission.
                             </div>
                         )}
 
@@ -416,7 +416,7 @@ export default function VerifyPage() {
                 {result?.isLookupOnly && (
                     <div className="card" style={{ marginBottom: 24, borderColor: 'var(--accent-blue)', boxShadow: 'var(--shadow-glow)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                            <div style={{ fontSize: '1.5rem' }}>📋</div>
+                            <ClipboardList size={24} color="var(--accent-blue-light)" />
                             <div>
                                 <div style={{ fontWeight: 800 }}>Submission Record Found</div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lookup only · No file comparison performed</div>
@@ -430,7 +430,7 @@ export default function VerifyPage() {
                             'File Name': result.record.originalFileName,
                             'File Size': formatBytes(result.record.fileSize),
                             'Submission Time': formatDate(result.record.submissionTime),
-                            'Deadline Status': result.record.submittedBeforeDeadline ? '✅ On-time' : '❌ Late',
+                            'Deadline Status': result.record.submittedBeforeDeadline ? 'On-time' : 'Late',
                             'SHA-256 Hash': result.record.sha256Hash,
                         }).map(([label, value]) => (
                             <div key={label} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
@@ -447,7 +447,7 @@ export default function VerifyPage() {
                                 </div>
                             </div>
                         ))}
-                        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={reset}>🔄 New Lookup</button>
+                        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={reset}><RefreshCw size={14} /> New Lookup</button>
                     </div>
                 )}
 
@@ -489,7 +489,7 @@ export default function VerifyPage() {
                                             </>
                                         ) : (
                                             <>
-                                                <div style={{ fontSize: '2rem', marginBottom: 8 }}>☁️</div>
+                                                <CloudUpload size={28} color="var(--text-muted)" style={{ marginBottom: 8 }} />
                                                 <div style={{ fontWeight: 600 }}>Drop ZIP or click to upload</div>
                                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
                                                     {mode === 'changes' ? 'Detect changes from original' : 'Verify project integrity'}
@@ -528,7 +528,7 @@ export default function VerifyPage() {
                         {mode === 'lookup' && (
                             <div>
                                 <div className="alert alert-info" style={{ marginBottom: 16 }}>
-                                    ℹ️ Lookup only displays the stored record — no integrity check is performed.
+                                    <Info size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} /> Lookup only displays the stored record — no integrity check is performed.
                                 </div>
                                 <button id="lookup-btn" className="btn btn-primary btn-full" onClick={handleLookup} disabled={loading || !verificationId.trim()}>
                                     {loading ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Looking up...</> : <><Search size={15} /> Lookup Record</>}

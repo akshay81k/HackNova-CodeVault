@@ -15,7 +15,7 @@ const PLANS = [
         icon: <Zap size={24} />,
         storage: '1 GB',
         features: [
-            'Up to 10 team submissions',
+            'Up to 3 events hosted',
             'Secure project upload',
             'Basic submission hashing',
             'Blockchain timestamp verification',
@@ -37,7 +37,7 @@ const PLANS = [
         icon: <Star size={24} />,
         storage: '5 GB',
         features: [
-            'Up to 50 teams per event',
+            'Up to 15 events hosted',
             'Secure ZIP / Git submission',
             'Tamper-proof hashing',
             'Blockchain integrity verification',
@@ -61,7 +61,7 @@ const PLANS = [
         isPopular: true,
         features: [
             'Everything in Builder, plus:',
-            'Up to 200 teams',
+            'Up to 100 events hosted',
             'Advanced plagiarism comparison',
             'Similarity percentage reports',
             'Full forensic reconstruction',
@@ -82,7 +82,7 @@ const PLANS = [
         storage: '100 GB',
         features: [
             'Everything in Organizer, plus:',
-            'Up to 500+ teams',
+            'Unlimited events',
             'Real-time plagiarism detection',
             'Blockchain verification portal',
             'Public verification links',
@@ -259,15 +259,18 @@ export default function SubscriptionPage() {
 
                 <div style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-                    gap: 24,
-                    marginTop: 40
+                    gridTemplateColumns: 'repeat(4, 1fr)', 
+                    gap: 20,
+                    marginTop: 40,
+                    width: '100%',
+                    maxWidth: 1280,
+                    marginInline: 'auto'
                 }}>
                     {PLANS.map(plan => (
                         <div key={plan.id} className={`card ${plan.isPopular ? 'popular' : ''}`} style={{ 
-                            display: 'flex', flexDirection: 'column', textAlign: 'left', position: 'relative',
+                            display: 'flex', flexDirection: 'column', textAlign: 'left', position: 'relative', height: '100%',
                             border: plan.isPopular ? `2px solid ${plan.color}` : '1px solid var(--border)',
-                            transform: plan.isPopular ? 'scale(1.05)' : 'none', zIndex: plan.isPopular ? 2 : 1
+                            zIndex: plan.isPopular ? 2 : 1
                         }}>
                             {plan.isPopular && (
                                 <div style={{
