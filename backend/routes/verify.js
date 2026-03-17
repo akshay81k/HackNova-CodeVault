@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const Submission = require('../models/Submission');
 const TimelineEvent = require('../models/TimelineEvent');
+const { computeFileHashes, compareFileHashes } = require('../services/fileLevelHasher');
 
 const router = express.Router();
 
@@ -187,6 +188,77 @@ router.post('/hash', async (req, res) => {
     TimelineEvent.create({ submission: submission._id, eventType: 'VERIFICATION_CHECKED', details: `Hash verification: ${isMatch ? 'MATCH' : 'MISMATCH'}` })
       .catch(err => console.error('[Timeline] Error:', err.message));
   } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * @route   POST /api/verify/verify-changes
+ * @desc    Detect file-level changes between a new ZIP and the original submission
+ * @access  Public
+ */
+router.post('/verify-changes', tempUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file provided for verification.' });
+    }
+
+    const { verificationId } = req.body;
+    if (!verificationId) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ success: false, message: 'Verification ID is required.' });
+    }
+
+    // Find submission
+    const submission = await Submission.findOne({ verificationId: verificationId.toUpperCase().trim() });
+    if (!submission) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(404).json({ success: false, message: 'Submission not found.' });
+    }
+
+    // Use stored hashes from DB (now an array)
+    const storedHashesArr = Array.isArray(submission.fileHashes) ? submission.fileHashes : [];
+
+    if (storedHashesArr.length === 0) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This submission does not have file-level tracking data. Only newer submissions support change detection.' 
+      });
+    }
+
+    // Compute hashes for new ZIP
+    const newHashes = await computeFileHashes(req.file.path);
+    
+    // Cleanup temp file
+    if (req.file) fs.unlinkSync(req.file.path);
+
+    // Compare
+    const report = compareFileHashes(storedHashesArr, newHashes);
+
+    res.json({
+      success: true,
+      report,
+      details: {
+        verificationId: submission.verificationId,
+        teamName: submission.teamName,
+        originalFileName: submission.originalFileName,
+        submissionTime: submission.timestampISO
+      }
+    });
+
+    // ── Timeline: VERIFICATION_CHECKED ──
+    TimelineEvent.create({ 
+      submission: submission._id, 
+      eventType: 'VERIFICATION_CHECKED', 
+      details: `File change detection run. Modified: ${report.modified.length}, New: ${report.added.length}, Deleted: ${report.deleted.length}` 
+    }).catch(err => console.error('[Timeline] Error:', err.message));
+
+  } catch (err) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    console.error('[VerifyChanges] Error:', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 });

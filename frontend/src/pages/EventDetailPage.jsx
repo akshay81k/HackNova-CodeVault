@@ -388,7 +388,7 @@ export default function EventDetailPage() {
 
                             {verification?.verified && (
                                 <div className="form-group animate-slide-down" style={{ marginBottom: 0 }}>
-                                    <label className="form-label">Team Name (optional)</label>
+                                    <label className="form-label">Team Name</label>
                                     <input
                                         type="text"
                                         className="form-input"

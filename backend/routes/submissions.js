@@ -11,6 +11,7 @@ const { anchorHashOnSolana } = require('../services/solana');
 const { uploadFileToS3, getSignedDownloadUrl, downloadFileFromS3 } = require('../services/s3');
 const { compareSubmissions } = require('../services/plagiarism');
 const { runClassifier } = require('../services/classifier');
+const { computeFileHashes } = require('../services/fileLevelHasher');
 const TimelineEvent     = require('../models/TimelineEvent');
 const https = require('https');
 const http  = require('http');
@@ -126,36 +127,37 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
     const trustedTimestamp = now;
     const timestampISO     = trustedTimestamp.toISOString();
 
-    // Step 1: Start all heavy tasks in parallel
-    console.log(`[Submission] Starting parallel processing for team ${teamId}...`);
+    // Step 1: Start all heavy tasks
+    console.log(`[Submission] Starting processing for team ${teamId}...`);
     
-    // Hashing tasks (wait for these)
-    const sha256Promise = hashFile(filePath);
-    const gitHashPromise = computeGitHash(filePath).catch(err => {
+    // Hashing tasks - run these sequentially on Windows to avoid file lock issues
+    const sha256Hash = await hashFile(filePath);
+    
+    const gitHash = await computeGitHash(filePath).catch(err => {
       console.error('[Submission] .git hash failed:', err.message);
       return null;
     });
 
-    // S3 Upload task (wait for this)
+    const fileHashes = await computeFileHashes(filePath).catch(err => {
+      console.error('[Submission] File-level hashing failed:', err.message);
+      return {};
+    });
+
+    // S3 Upload task (can run in background or parallel if needed, but let's keep it here for reply)
     const s3Key = `submissions/${eventId}/${teamId}/${req.file.filename}`;
-    const s3Promise = uploadFileToS3(filePath, s3Key, 'application/zip').catch(err => {
+    const uploadedUrl = await uploadFileToS3(filePath, s3Key, 'application/zip').catch(err => {
       console.error('[Submission] S3 upload failed:', err.message);
       return null; 
     });
 
-    // ML Task (background - don't wait for response)
+    // ML Task (start in background - don't wait for response)
     const mlPromise = runClassifier(filePath).catch(err => {
       console.error('[Submission] ML classification failed:', err.message);
       return null;
     });
 
-    // Step 2: Wait ONLY for hashing and S3 upload before replying
-    const [sha256Hash, gitHash, uploadedUrl, previousCount] = await Promise.all([
-      sha256Promise,
-      gitHashPromise,
-      s3Promise,
-      Submission.countDocuments({ event: eventId, submittedBy: req.user._id })
-    ]);
+    // Step 2: Get previous submission count
+    const previousCount = await Submission.countDocuments({ event: eventId, submittedBy: req.user._id });
 
     const submissionNumber = previousCount + 1;
     let fileUrl = uploadedUrl;
@@ -192,6 +194,7 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
       submittedBeforeDeadline: true,
       notes: notes || '',
       submissionNumber,
+      fileHashes,
       blockchainAnchored: false, // Updated in background
       mlCategory: null,          // Updated in background
       mlConfidence: null         // Updated in background
@@ -270,7 +273,7 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
         if (blockchainTxId) {
           timelineOps.push(TimelineEvent.create({ submission: submission._id, eventType: 'BLOCKCHAIN_ANCHORED', details: `TxID: ${blockchainTxId.substring(0, 20)}…` }));
         }
-        if (mlResult) {
+        if (mlResult && mlResult.category) {
           timelineOps.push(TimelineEvent.create({ submission: submission._id, eventType: 'ML_CLASSIFIED', details: `Category: ${mlResult.category} (${(mlResult.confidence * 100).toFixed(1)}%)` }));
         }
         await Promise.all(timelineOps).catch(err => console.error('[Timeline] Error:', err.message));
@@ -286,6 +289,11 @@ router.post('/', protect, authorize('user'), upload.single('gitFile'), async (re
 
   } catch (err) {
     console.error(`[Submission] CRITICAL ERROR: ${err.message}`);
+    // Wait for ML classify to potentially finish reading before unlinking
+    // This prevents ENOENT in the background script which might still be running
+    if (typeof mlPromise !== 'undefined') {
+      await mlPromise.catch(() => {});
+    }
     safeUnlink(filePath);
     res.status(500).json({ success: false, message: err.message });
   }
@@ -592,6 +600,7 @@ router.get('/:id/timeline', protect, authorize('organizer', 'admin'), async (req
     // Organizer can only view timeline for their own events
     if (
       req.user.role === 'organizer' &&
+      submission.event && submission.event.organizer &&
       submission.event.organizer.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({ success: false, message: 'Access denied.' });

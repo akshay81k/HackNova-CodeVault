@@ -113,7 +113,12 @@ const submissionSchema = new mongoose.Schema({
   blockchainError: {
     type: String,
     default: null
-  }
+  },
+  // List of files and their SHA-256 hashes
+  fileHashes: [{
+    path: String,
+    hash: String
+  }]
 }, {
   timestamps: true
 });

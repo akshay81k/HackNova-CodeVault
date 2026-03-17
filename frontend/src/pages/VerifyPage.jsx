@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
-import { Search, Upload, Hash, Copy, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Upload, Hash, Copy, CheckCircle, XCircle, FileDiff } from 'lucide-react';
 
 export default function VerifyPage() {
-    const [mode, setMode] = useState('file'); // 'file' | 'hash'
+    const [mode, setMode] = useState('file'); // 'file' | 'hash' | 'lookup' | 'changes'
     const [verificationId, setVerificationId] = useState('');
     const [file, setFile] = useState(null);
     const [hashString, setHashString] = useState('');
@@ -41,6 +41,25 @@ export default function VerifyPage() {
             setResult(data);
         } catch (err) {
             setError(err.response?.data?.message || 'Verification failed.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleChangesVerify = async (e) => {
+        e.preventDefault();
+        if (!file || !verificationId.trim()) return setError('Please provide both the Verification ID and the ZIP file.');
+        setError('');
+        setResult(null);
+        setLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('verificationId', verificationId.trim());
+            const { data } = await API.post('/verify/verify-changes', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+            setResult({ isChangeReport: true, ...data });
+        } catch (err) {
+            setError(err.response?.data?.message || 'Change detection failed.');
         } finally {
             setLoading(false);
         }
@@ -101,20 +120,22 @@ export default function VerifyPage() {
                     <h1 style={{ fontSize: '2rem', fontWeight: 900, marginBottom: 10 }}>Verify Submission</h1>
                     <p style={{ color: 'var(--text-secondary)', maxWidth: 480, margin: '0 auto' }}>
                         Judges and organizers can independently verify the integrity of any submission.
-                        No account required.
                     </p>
                 </div>
 
                 {/* Mode Tabs */}
                 <div className="tabs" style={{ marginBottom: 28 }}>
                     <button className={`tab ${mode === 'file' ? 'active' : ''}`} onClick={() => { setMode('file'); reset(); }}>
-                        📁 Upload File
+                        📁 Upload
+                    </button>
+                    <button className={`tab ${mode === 'changes' ? 'active' : ''}`} onClick={() => { setMode('changes'); reset(); }}>
+                        📉 Changes
                     </button>
                     <button className={`tab ${mode === 'hash' ? 'active' : ''}`} onClick={() => { setMode('hash'); reset(); }}>
-                        🔢 Paste Hash
+                        🔢 Hash
                     </button>
                     <button className={`tab ${mode === 'lookup' ? 'active' : ''}`} onClick={() => { setMode('lookup'); reset(); }}>
-                        🔍 Lookup Record
+                        🔍 Lookup
                     </button>
                 </div>
 
@@ -122,7 +143,7 @@ export default function VerifyPage() {
                 {error && <div className="alert alert-error" style={{ marginBottom: 20 }}>⚠️ {error}</div>}
 
                 {/* Result */}
-                {result && !result.isLookupOnly && (
+                {result && !result.isLookupOnly && !result.isChangeReport && (
                     <div className={`verify-result animate-scale-in ${result.isMatch ? 'match' : 'mismatch'}`} style={{ marginBottom: 24 }}>
                         <div className="verify-icon">{result.isMatch ? '✅' : '❌'}</div>
                         <div className={`verify-status ${result.isMatch ? 'match' : 'mismatch'}`}>
@@ -154,6 +175,58 @@ export default function VerifyPage() {
                             </div>
                         )}
                         <button className="btn btn-secondary" style={{ marginTop: 20 }} onClick={reset}>🔄 Verify Another</button>
+                    </div>
+                )}
+
+                {/* Change Report Result */}
+                {result?.isChangeReport && (
+                    <div className="card animate-scale-in" style={{ marginBottom: 24, borderLeft: '4px solid var(--accent-blue)', boxShadow: 'var(--shadow-glow)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                            <div style={{ fontSize: '1.5rem' }}>📊</div>
+                            <div>
+                                <div style={{ fontWeight: 800 }}>File Change Report</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{result.details.teamName} · {result.details.originalFileName}</div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 24 }}>
+                            <div style={{ background: 'rgba(239,68,68,0.1)', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ef4444' }}>{result.report.modified.length}</div>
+                                <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8 }}>Modified</div>
+                            </div>
+                            <div style={{ background: 'rgba(16,185,129,0.1)', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981' }}>{result.report.added.length}</div>
+                                <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8 }}>Added</div>
+                            </div>
+                            <div style={{ background: 'rgba(107,114,128,0.1)', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#9ca3af' }}>{result.report.deleted.length}</div>
+                                <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, opacity: 0.8 }}>Deleted</div>
+                            </div>
+                        </div>
+
+                        {/* List changed files */}
+                        {['modified', 'added', 'deleted'].map(type => (
+                            result.report[type].length > 0 && (
+                                <div key={type} style={{ marginBottom: 20 }}>
+                                    <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: type === 'modified' ? '#f59e0b' : type === 'added' ? '#10b981' : '#ef4444', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {type === 'modified' ? '⚠️' : type === 'added' ? '➕' : '🗑️'} {type} Files
+                                    </h3>
+                                    <div style={{ maxHeight: 200, overflowY: 'auto', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', padding: 10 }}>
+                                        {result.report[type].map(f => (
+                                            <div key={f} className="mono" style={{ fontSize: '0.75rem', padding: '6px 4px', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}>{f}</div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        ))}
+                        
+                        {result.report.modified.length === 0 && result.report.added.length === 0 && result.report.deleted.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--accent-green)', fontWeight: 600 }}>
+                                ✅ No changes detected! Project is identical to submission.
+                            </div>
+                        )}
+
+                        <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={reset}>🔄 Run New Comparison</button>
                     </div>
                 )}
 
@@ -213,10 +286,10 @@ export default function VerifyPage() {
                             />
                         </div>
 
-                        {mode === 'file' && (
-                            <form onSubmit={handleFileVerify}>
+                        {(mode === 'file' || mode === 'changes') && (
+                            <form onSubmit={mode === 'file' ? handleFileVerify : handleChangesVerify}>
                                 <div className="form-group">
-                                    <label className="form-label">Upload the Original File</label>
+                                    <label className="form-label">Upload Project ZIP</label>
                                     <div
                                         className={`upload-zone ${dragging ? 'dragging' : ''}`}
                                         style={{ padding: '28px 20px' }}
@@ -235,14 +308,17 @@ export default function VerifyPage() {
                                         ) : (
                                             <>
                                                 <div style={{ fontSize: '2rem', marginBottom: 8 }}>☁️</div>
-                                                <div style={{ fontWeight: 600 }}>Drop file or click to upload</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>The same ZIP file you submitted</div>
+                                                <div style={{ fontWeight: 600 }}>Drop ZIP or click to upload</div>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                                                    {mode === 'changes' ? 'Detect changes from original' : 'Verify project integrity'}
+                                                </div>
                                             </>
                                         )}
                                     </div>
                                 </div>
-                                <button id="file-verify-btn" type="submit" className="btn btn-primary btn-full" disabled={loading || !file || !verificationId.trim()}>
-                                    {loading ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Verifying...</> : <><Upload size={15} /> Compare & Verify</>}
+                                <button id="verify-submit-btn" type="submit" className="btn btn-primary btn-full" disabled={loading || !file || !verificationId.trim()}>
+                                    {loading ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Processing...</> : 
+                                     mode === 'changes' ? <><FileDiff size={15} /> Detect Changes</> : <><Upload size={15} /> Compare & Verify</>}
                                 </button>
                             </form>
                         )}
@@ -283,14 +359,14 @@ export default function VerifyPage() {
                 {/* How it works */}
                 {!result && (
                     <div className="card" style={{ marginTop: 20 }}>
-                        <div style={{ fontWeight: 700, marginBottom: 14, fontSize: '0.9rem' }}>How Verification Works</div>
+                        <div style={{ fontWeight: 700, marginBottom: 14, fontSize: '0.9rem' }}>Verification Capabilities</div>
                         {[
-                            ['1', 'SHA-256', 'When a participant submits, the server computes a SHA-256 hash of their .git ZIP file.'],
-                            ['2', 'Timestamp', 'A trusted server-side timestamp is recorded — immutable and stored in our database.'],
-                            ['3', 'Verify', 'Upload the same file here. If the hash matches, the submission is authentic and unmodified.'],
+                            ['1', 'Integrity', 'Check if a ZIP file is identical to the original submission using SHA-256 hashing.'],
+                            ['2', 'Change Detection', 'Detect exactly which files were modified, added, or deleted since the submission.'],
+                            ['3', 'Public Record', 'Lookup submission metadata and trusted timestamps using only a Verification ID.'],
                         ].map(([num, title, desc]) => (
-                            <div key={num} style={{ display: 'flex', gap: 14, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-blue-light)', flexShrink: 0 }}>{num}</div>
+                            <div key={num} style={{ display: 'flex', gap: 14, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-blue)', flexShrink: 0 }}>{num}</div>
                                 <div>
                                     <div style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: 2 }}>{title}</div>
                                     <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{desc}</div>
