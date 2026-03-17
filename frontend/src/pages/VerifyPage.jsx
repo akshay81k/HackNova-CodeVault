@@ -3,7 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import InteractiveBackground from '../components/InteractiveBackground';
-import { Search, Upload, Hash, Copy, CheckCircle, XCircle, FileDiff } from 'lucide-react';
+import { Search, Upload, Hash, Copy, CheckCircle, XCircle, FileDiff, Download } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function VerifyPage() {
     const [mode, setMode] = useState('file'); // 'file' | 'hash' | 'lookup' | 'changes'
@@ -111,6 +113,178 @@ export default function VerifyPage() {
         setHashString('');
     };
 
+    const exportToPDF = () => {
+        try {
+            console.log("Starting PDF Export...", result);
+            if (!result) return;
+            
+            const doc = new jsPDF();
+            
+            const primaryColor = [14, 165, 233];
+            const textColor = [30, 41, 59];
+            const lightText = [100, 116, 139];
+            
+            let yPos = 20;
+
+            doc.setFontSize(22);
+            doc.setTextColor(...primaryColor);
+            doc.setFont("helvetica", "bold");
+            doc.text("Hackathon Submission Verification Report", 14, yPos);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(...lightText);
+            doc.setFont("helvetica", "normal");
+            yPos += 8;
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, yPos);
+            
+            const refId = result.details?.verificationId || verificationId || "N/A";
+            doc.text(`Verification ID: ${refId}`, 196, yPos, { align: "right" });
+            
+            yPos += 15;
+            
+            const addSectionTitle = (title) => {
+                doc.setFontSize(14);
+                doc.setTextColor(...primaryColor);
+                doc.setFont("helvetica", "bold");
+                doc.text(title, 14, yPos);
+                yPos += 2;
+                doc.setDrawColor(226, 232, 240);
+                doc.line(14, yPos, 196, yPos);
+                yPos += 8;
+            };
+
+            addSectionTitle("Event Details & Participant Information");
+            
+            const detailsData = [
+                ["Event Title", result.details?.eventTitle || "-"],
+                ["Team / Participant", result.details?.teamName || result.details?.submittedBy || "-"],
+                ["Original File Name", result.details?.originalFileName || "-"],
+                ["File Size", result.details?.fileSize ? formatBytes(result.details?.fileSize) : "-"],
+                ["Submission Time", result.details?.submissionTime ? formatDate(result.details?.submissionTime) : "-"],
+                ["Deadline Status", result.details?.submittedBeforeDeadline ? "On-Time" : "Late"]
+            ];
+
+            autoTable(doc, {
+                startY: yPos,
+                body: detailsData,
+                theme: 'grid',
+                styles: { fontSize: 10, cellPadding: 5, textColor: textColor },
+                columnStyles: { 0: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 50 } },
+                margin: { left: 14, right: 14 },
+                didDrawPage: (data) => {
+                    yPos = data.cursor.y;
+                }
+            });
+            
+            yPos = (doc.lastAutoTable ? doc.lastAutoTable.finalY : yPos) + 15;
+
+            if (!result.isChangeReport && !result.isLookupOnly) {
+                if (yPos > 250) { doc.addPage(); yPos = 20; }
+                addSectionTitle("Blockchain Integrity Check");
+                
+                autoTable(doc, {
+                    startY: yPos,
+                    body: [
+                        ["Expected Hash", result.details?.expectedHash || "-"],
+                        ["Provided Hash", result.details?.providedHash || "-"],
+                        ["Status", result.isMatch ? "SUCCESS (Hashes Match)" : "FAILED (Hash Mismatch)"]
+                    ],
+                    theme: 'grid',
+                    styles: { fontSize: 10, cellPadding: 5, textColor: textColor },
+                    columnStyles: { 
+                        0: { fontStyle: 'bold', fillColor: [248, 250, 252], cellWidth: 50 },
+                        1: { font: 'courier', fontSize: 9, cellWidth: 'wrap' }
+                    },
+                    margin: { left: 14, right: 14 }
+                });
+                yPos = (doc.lastAutoTable ? doc.lastAutoTable.finalY : yPos) + 15;
+            }
+
+            if (result.isChangeReport && result.report) {
+                if (yPos > 240) { doc.addPage(); yPos = 20; }
+                addSectionTitle("File Change Summary");
+
+                autoTable(doc, {
+                    startY: yPos,
+                    head: [["Modified Files", "Added Files", "Deleted Files"]],
+                    body: [[
+                        result.report.modified?.length || 0,
+                        result.report.added?.length || 0,
+                        result.report.deleted?.length || 0
+                    ]],
+                    theme: 'grid',
+                    headStyles: { fillColor: [241, 245, 249], textColor: textColor, halign: 'center' },
+                    bodyStyles: { halign: 'center', fontSize: 12, fontStyle: 'bold' },
+                    margin: { left: 14, right: 14 }
+                });
+                yPos = (doc.lastAutoTable ? doc.lastAutoTable.finalY : yPos) + 15;
+
+                const printList = (title, items, color) => {
+                    if (!items || items.length === 0) return;
+                    if (yPos > 240) { doc.addPage(); yPos = 20; }
+                    addSectionTitle(title);
+                    autoTable(doc, {
+                        startY: yPos,
+                        body: items.map(f => [f]),
+                        theme: 'plain',
+                        styles: { font: 'courier', fontSize: 9, textColor: color },
+                        margin: { left: 14, right: 14 }
+                    });
+                    yPos = (doc.lastAutoTable ? doc.lastAutoTable.finalY : yPos) + 10;
+                };
+
+                printList("Modified Files", result.report.modified, [245, 158, 11]);
+                printList("Added Files", result.report.added, [16, 185, 129]);
+                printList("Deleted Files", result.report.deleted, [239, 68, 68]);
+            }
+
+            if (yPos > 240) { doc.addPage(); yPos = 20; }
+            addSectionTitle("Verification Conclusion");
+            
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.setTextColor(...textColor);
+            
+            let conclusionText = "";
+            if (!result.isChangeReport && !result.isLookupOnly) {
+                if (result.isMatch) {
+                    conclusionText = "The provided file is authentic and matches the original submission perfectly. The cryptographic hash recalculation aligns with the blockchain record, confirming that no modifications or tampering have occurred since the original submission timestamp.";
+                } else {
+                    conclusionText = "WARNING: The provided file does NOT match the original submission. The cryptographic hash recalculation differs from the blockchain record, indicating that the file is not authentic or has been modified/tampered with since the original submission timestamp.";
+                }
+            } else if (result.isChangeReport) {
+                const added = result.report?.added?.length || 0;
+                const deleted = result.report?.deleted?.length || 0;
+                const modified = result.report?.modified?.length || 0;
+                if (added === 0 && deleted === 0 && modified === 0) {
+                    conclusionText = "The provided project is completely identical to the original submission. Total changes detected: 0. The integrity of the project is intact.";
+                } else {
+                    conclusionText = `File differences were detected between the verified project and the original submission. A total of ${modified} modifications, ${added} additions, and ${deleted} deletions were found. Please review the detailed file lists above to understand the scope of the changes.`;
+                }
+            } else {
+                 conclusionText = "This is a public record lookup. No file integrity check or comparison was performed. The data above represents the stored submission metadata on the blockchain.";
+            }
+            
+            const textLines = doc.splitTextToSize(conclusionText, 168);
+            doc.text(textLines, 14, yPos);
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(9);
+                doc.setTextColor(148, 163, 184);
+                doc.setFont("helvetica", "italic");
+                doc.text("Generated by CodeVault Verification System", 14, 290);
+                doc.text(`Page ${i} of ${pageCount}`, 196, 290, { align: "right" });
+            }
+
+            doc.save(`Verification_Report_${refId}.pdf`);
+        } catch (err) {
+            console.error("PDF Export Error:", err);
+            setError("Failed to generate PDF. Error: " + err.message);
+        }
+    };
+
     return (
         <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
             <InteractiveBackground />
@@ -176,7 +350,10 @@ export default function VerifyPage() {
                                 ))}
                             </div>
                         )}
-                        <button className="btn btn-secondary" style={{ marginTop: 20 }} onClick={reset}>🔄 Verify Another</button>
+                        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                            <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => exportToPDF()}><Download size={18} /> Export Report</button>
+                            <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={reset}>🔄 Verify Another</button>
+                        </div>
                     </div>
                 )}
 
@@ -221,14 +398,17 @@ export default function VerifyPage() {
                                 </div>
                             )
                         ))}
-                        
+
                         {result.report.modified.length === 0 && result.report.added.length === 0 && result.report.deleted.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--accent-green)', fontWeight: 600 }}>
                                 ✅ No changes detected! Project is identical to submission.
                             </div>
                         )}
 
-                        <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={reset}>🔄 Run New Comparison</button>
+                        <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                            <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => exportToPDF()}><Download size={18} /> Export Report</button>
+                            <button className="btn btn-secondary btn-full" style={{ flex: 1, justifyContent: 'center' }} onClick={reset}>🔄 Run New Comparison</button>
+                        </div>
                     </div>
                 )}
 
@@ -319,8 +499,8 @@ export default function VerifyPage() {
                                     </div>
                                 </div>
                                 <button id="verify-submit-btn" type="submit" className="btn btn-primary btn-full" disabled={loading || !file || !verificationId.trim()}>
-                                    {loading ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Processing...</> : 
-                                     mode === 'changes' ? <><FileDiff size={15} /> Detect Changes</> : <><Upload size={15} /> Compare & Verify</>}
+                                    {loading ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Processing...</> :
+                                        mode === 'changes' ? <><FileDiff size={15} /> Detect Changes</> : <><Upload size={15} /> Compare & Verify</>}
                                 </button>
                             </form>
                         )}

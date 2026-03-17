@@ -183,16 +183,16 @@ export default function SubmitPage() {
                 ) : result?.verificationId ? (
                     /* Success State - Digital Certificate */
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div id="digital-certificate" style={{ 
-                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', 
-                            border: '1px solid rgba(14, 165, 233, 0.3)', 
-                            borderRadius: '20px', 
-                            padding: '48px', 
-                            color: 'white', 
-                            position: 'relative', 
-                            overflow: 'hidden', 
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', 
-                            marginBottom: '20px' 
+                        <div id="digital-certificate" style={{
+                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                            border: '1px solid rgba(14, 165, 233, 0.3)',
+                            borderRadius: '20px',
+                            padding: '48px',
+                            color: 'white',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                            marginBottom: '20px'
                         }}>
                             {/* Decorative Premium Border Lines */}
                             <div style={{ position: 'absolute', top: '12px', bottom: '12px', left: '12px', right: '12px', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', pointerEvents: 'none' }}></div>
@@ -200,19 +200,19 @@ export default function SubmitPage() {
                             {/* Elegant Glowing Orbs */}
                             <div style={{ position: 'absolute', top: -100, right: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(14,165,233,0.15) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none' }}></div>
                             <div style={{ position: 'absolute', bottom: -100, left: -50, width: 300, height: 300, background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, rgba(0,0,0,0) 70%)', pointerEvents: 'none' }}></div>
-                            
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1, flexWrap: 'wrap', gap: 32 }}>
-                                
+
                                 {/* Left Info Column */}
                                 <div style={{ flex: '1 1 350px' }}>
                                     {/* Header */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-                                        <div style={{ 
-                                            width: '48px', height: '48px', 
-                                            background: 'rgba(14, 165, 233, 0.1)', 
-                                            border: '1px solid rgba(14, 165, 233, 0.2)', 
-                                            borderRadius: '12px', 
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' 
+                                        <div style={{
+                                            width: '48px', height: '48px',
+                                            background: 'rgba(14, 165, 233, 0.1)',
+                                            border: '1px solid rgba(14, 165, 233, 0.2)',
+                                            borderRadius: '12px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem'
                                         }}>🛡️</div>
                                         <div>
                                             <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, letterSpacing: '3px', textTransform: 'uppercase', color: '#38bdf8' }}>HackNova</h2>
@@ -241,14 +241,14 @@ export default function SubmitPage() {
                                     {/* Hash Display */}
                                     <div>
                                         <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Cryptographic Hash (SHA-256)</div>
-                                        <div style={{ 
-                                            fontFamily: 'monospace', fontSize: '0.9rem', color: '#38bdf8', 
-                                            background: 'rgba(0,0,0,0.3)', padding: '12px 16px', borderRadius: '8px', 
-                                            wordBreak: 'break-all', lineHeight: 1.5, border: '1px solid rgba(255,255,255,0.05)' 
+                                        <div style={{
+                                            fontFamily: 'monospace', fontSize: '0.9rem', color: '#38bdf8',
+                                            background: 'rgba(0,0,0,0.3)', padding: '12px 16px', borderRadius: '8px',
+                                            wordBreak: 'break-all', lineHeight: 1.5, border: '1px solid rgba(255,255,255,0.05)'
                                         }}>
                                             {result.sha256Hash}
                                         </div>
-                                        
+
                                         {result.mlCategory && (
                                             <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>ML Prediction:</div>
@@ -259,7 +259,7 @@ export default function SubmitPage() {
                                         )}
                                     </div>
                                 </div>
-                                
+
                                 {/* Right QR Code Column */}
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', margin: '0 auto' }}>
                                     <div style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', flexShrink: 0 }}>
