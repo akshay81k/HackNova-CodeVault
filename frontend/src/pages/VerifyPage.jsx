@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import InteractiveBackground from '../components/InteractiveBackground';
-import { Search, Upload, Hash, Copy, CheckCircle, XCircle, FileDiff } from 'lucide-react';
+import { Search, Upload, Hash, Copy, CheckCircle, XCircle, FileDiff, RefreshCw, BarChart3, ClipboardList, AlertTriangle, Plus, Trash2, CloudUpload, Info } from 'lucide-react';
 
 export default function VerifyPage() {
     const [mode, setMode] = useState('file'); // 'file' | 'hash' | 'lookup' | 'changes'
@@ -142,12 +142,12 @@ export default function VerifyPage() {
                 </div>
 
                 {/* Error */}
-                {error && <div className="alert alert-error" style={{ marginBottom: 20 }}>⚠️ {error}</div>}
+                {error && <div className="alert alert-error" style={{ marginBottom: 20 }}><AlertTriangle size={14} /> {error}</div>}
 
                 {/* Result */}
                 {result && !result.isLookupOnly && !result.isChangeReport && (
                     <div className={`verify-result animate-scale-in ${result.isMatch ? 'match' : 'mismatch'}`} style={{ marginBottom: 24 }}>
-                        <div className="verify-icon">{result.isMatch ? '✅' : '❌'}</div>
+                        <div className="verify-icon">{result.isMatch ? <CheckCircle size={28} color="var(--accent-green)" /> : <XCircle size={28} color="var(--accent-red)" />}</div>
                         <div className={`verify-status ${result.isMatch ? 'match' : 'mismatch'}`}>
                             {result.result}
                         </div>
@@ -165,7 +165,7 @@ export default function VerifyPage() {
                                     ['Submitted By', result.details.submittedBy],
                                     ['Team', result.details.teamName],
                                     ['Submission Time', formatDate(result.details.submissionTime)],
-                                    ['Deadline Status', result.details.submittedBeforeDeadline ? '✅ On-time' : '❌ Late'],
+                                    ['Deadline Status', result.details.submittedBeforeDeadline ? 'On-time' : 'Late'],
                                     ['Expected Hash', result.details.expectedHash],
                                     ['Provided Hash', result.details.providedHash],
                                 ].map(([label, value]) => (
@@ -176,7 +176,7 @@ export default function VerifyPage() {
                                 ))}
                             </div>
                         )}
-                        <button className="btn btn-secondary" style={{ marginTop: 20 }} onClick={reset}>🔄 Verify Another</button>
+                        <button className="btn btn-secondary" style={{ marginTop: 20 }} onClick={reset}><RefreshCw size={14} /> Verify Another</button>
                     </div>
                 )}
 
@@ -184,7 +184,7 @@ export default function VerifyPage() {
                 {result?.isChangeReport && (
                     <div className="card animate-scale-in" style={{ marginBottom: 24, borderLeft: '4px solid var(--accent-blue)', boxShadow: 'var(--shadow-glow)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                            <div style={{ fontSize: '1.5rem' }}>📊</div>
+                            <BarChart3 size={24} color="var(--accent-blue-light)" />
                             <div>
                                 <div style={{ fontWeight: 800 }}>File Change Report</div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{result.details.teamName} · {result.details.originalFileName}</div>
@@ -211,9 +211,9 @@ export default function VerifyPage() {
                             result.report[type].length > 0 && (
                                 <div key={type} style={{ marginBottom: 20 }}>
                                     <h3 style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: type === 'modified' ? '#f59e0b' : type === 'added' ? '#10b981' : '#ef4444', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        {type === 'modified' ? '⚠️' : type === 'added' ? '➕' : '🗑️'} {type} Files
+                                        {type === 'modified' ? <AlertTriangle size={14} /> : type === 'added' ? <Plus size={14} /> : <Trash2 size={14} />} {type} Files
                                     </h3>
-                                    <div style={{ maxHeight: 200, overflowY: 'auto', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', padding: 10 }}>
+                                    <div className="scrollbar-hidden" style={{ maxHeight: 200, overflowY: 'auto', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', padding: 10 }}>
                                         {result.report[type].map(f => (
                                             <div key={f} className="mono" style={{ fontSize: '0.75rem', padding: '6px 4px', borderBottom: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}>{f}</div>
                                         ))}
@@ -224,11 +224,11 @@ export default function VerifyPage() {
                         
                         {result.report.modified.length === 0 && result.report.added.length === 0 && result.report.deleted.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--accent-green)', fontWeight: 600 }}>
-                                ✅ No changes detected! Project is identical to submission.
+                                <CheckCircle size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} /> No changes detected! Project is identical to submission.
                             </div>
                         )}
 
-                        <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={reset}>🔄 Run New Comparison</button>
+                        <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={reset}><RefreshCw size={14} /> Run New Comparison</button>
                     </div>
                 )}
 
@@ -236,7 +236,7 @@ export default function VerifyPage() {
                 {result?.isLookupOnly && (
                     <div className="card" style={{ marginBottom: 24, borderColor: 'var(--accent-blue)', boxShadow: 'var(--shadow-glow)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                            <div style={{ fontSize: '1.5rem' }}>📋</div>
+                            <ClipboardList size={24} color="var(--accent-blue-light)" />
                             <div>
                                 <div style={{ fontWeight: 800 }}>Submission Record Found</div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lookup only · No file comparison performed</div>
@@ -250,7 +250,7 @@ export default function VerifyPage() {
                             'File Name': result.record.originalFileName,
                             'File Size': formatBytes(result.record.fileSize),
                             'Submission Time': formatDate(result.record.submissionTime),
-                            'Deadline Status': result.record.submittedBeforeDeadline ? '✅ On-time' : '❌ Late',
+                            'Deadline Status': result.record.submittedBeforeDeadline ? 'On-time' : 'Late',
                             'SHA-256 Hash': result.record.sha256Hash,
                         }).map(([label, value]) => (
                             <div key={label} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
@@ -267,7 +267,7 @@ export default function VerifyPage() {
                                 </div>
                             </div>
                         ))}
-                        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={reset}>🔄 New Lookup</button>
+                        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={reset}><RefreshCw size={14} /> New Lookup</button>
                     </div>
                 )}
 
@@ -309,7 +309,7 @@ export default function VerifyPage() {
                                             </>
                                         ) : (
                                             <>
-                                                <div style={{ fontSize: '2rem', marginBottom: 8 }}>☁️</div>
+                                                <CloudUpload size={28} color="var(--text-muted)" style={{ marginBottom: 8 }} />
                                                 <div style={{ fontWeight: 600 }}>Drop ZIP or click to upload</div>
                                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
                                                     {mode === 'changes' ? 'Detect changes from original' : 'Verify project integrity'}
@@ -348,7 +348,7 @@ export default function VerifyPage() {
                         {mode === 'lookup' && (
                             <div>
                                 <div className="alert alert-info" style={{ marginBottom: 16 }}>
-                                    ℹ️ Lookup only displays the stored record — no integrity check is performed.
+                                    <Info size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} /> Lookup only displays the stored record — no integrity check is performed.
                                 </div>
                                 <button id="lookup-btn" className="btn btn-primary btn-full" onClick={handleLookup} disabled={loading || !verificationId.trim()}>
                                     {loading ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Looking up...</> : <><Search size={15} /> Lookup Record</>}

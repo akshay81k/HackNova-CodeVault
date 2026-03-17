@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle, Shield } from 'lucide-react';
 import gsap from 'gsap';
 import InteractiveBackground from '../components/InteractiveBackground';
 
@@ -11,12 +11,15 @@ export default function RegisterPage() {
     const [showPass, setShowPass] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [turnstileToken, setTurnstileToken] = useState('');
 
-    const { register } = useAuth();
+    const { register, googleAuth } = useAuth();
     const navigate = useNavigate();
 
     const boxRef = useRef(null);
     const fieldsRef = useRef(null);
+    const turnstileRef = useRef(null);
+    const turnstileWidgetId = useRef(null);
 
     useEffect(() => {
         const ctx = gsap.context(() => {
@@ -32,7 +35,7 @@ export default function RegisterPage() {
             if (fields?.length) {
                 gsap.from(fields, {
                     y: 20,
-                    opacity: 1, // Ensure visible
+                    opacity: 1,
                     stagger: 0.08,
                     duration: 0.5,
                     delay: 0.3,
@@ -43,6 +46,82 @@ export default function RegisterPage() {
 
         return () => ctx.revert();
     }, []);
+
+    // Render Turnstile widget
+    useEffect(() => {
+        const renderTurnstile = () => {
+            if (window.turnstile && turnstileRef.current && turnstileWidgetId.current === null) {
+                turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+                    sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA',
+                    callback: (token) => setTurnstileToken(token),
+                    'expired-callback': () => setTurnstileToken(''),
+                    theme: 'dark',
+                });
+            }
+        };
+
+        const interval = setInterval(() => {
+            if (window.turnstile) {
+                renderTurnstile();
+                clearInterval(interval);
+            }
+        }, 300);
+
+        return () => {
+            clearInterval(interval);
+            if (turnstileWidgetId.current !== null && window.turnstile) {
+                window.turnstile.remove(turnstileWidgetId.current);
+                turnstileWidgetId.current = null;
+            }
+        };
+    }, []);
+
+    // Initialize Google Sign-Up
+    const handleGoogleResponse = useCallback(async (response) => {
+        setError('');
+        setLoading(true);
+        try {
+            const data = await googleAuth(response.credential, turnstileToken, form.role, form.organization);
+            if (data.user.role === 'admin') navigate('/admin');
+            else if (data.user.role === 'organizer') navigate('/organizer');
+            else navigate('/user');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Google Sign-Up failed.');
+        } finally {
+            setLoading(false);
+        }
+    }, [googleAuth, navigate, turnstileToken, form.role, form.organization]);
+
+    useEffect(() => {
+        const initGoogle = () => {
+            if (window.google?.accounts?.id) {
+                window.google.accounts.id.initialize({
+                    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+                    callback: handleGoogleResponse,
+                });
+                const googleBtnContainer = document.getElementById('google-signup-btn-register');
+                if (googleBtnContainer) {
+                    googleBtnContainer.innerHTML = '';
+                    window.google.accounts.id.renderButton(googleBtnContainer, {
+                        theme: 'filled_black',
+                        size: 'large',
+                        width: '100%',
+                        text: 'signup_with',
+                        shape: 'pill',
+                    });
+                }
+            }
+        };
+
+        const interval = setInterval(() => {
+            if (window.google?.accounts?.id) {
+                initGoogle();
+                clearInterval(interval);
+            }
+        }, 300);
+
+        return () => clearInterval(interval);
+    }, [handleGoogleResponse]);
 
     const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -55,7 +134,7 @@ export default function RegisterPage() {
 
         setLoading(true);
         try {
-            const data = await register(form);
+            const data = await register({ ...form, turnstileToken });
             if (data.user.role === 'admin') navigate('/admin');
             else if (data.user.role === 'organizer') navigate('/organizer');
             else navigate('/user');
@@ -66,8 +145,6 @@ export default function RegisterPage() {
         }
     };
 
-
-
     return (
     <div className="page-wrapper" style={{ position: 'relative', zIndex: 1 }}>
       <InteractiveBackground />
@@ -76,7 +153,7 @@ export default function RegisterPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 100px)', padding: '40px 20px' }}>
                 <div className="auth-box" ref={boxRef} style={{ animation: 'none', margin: 0 }}>
                     <div className="auth-logo">
-                        <div className="auth-logo-icon">🛡️</div>
+                        <div className="auth-logo-icon"><Shield size={22} color="#fff" /></div>
                         <div>
                             <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>HackNova</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Submission Integrity Platform</div>
@@ -86,7 +163,7 @@ export default function RegisterPage() {
                     <h1 className="auth-title">Create Account</h1>
                     <p className="auth-subtitle">Join as an organizer or participant</p>
 
-                    {error && <div className="alert alert-error">⚠️ {error}</div>}
+                    {error && <div className="alert alert-error"><AlertTriangle size={14} /> {error}</div>}
 
                     <form onSubmit={handleSubmit} ref={fieldsRef}>
                         <div className="form-group">
@@ -104,8 +181,8 @@ export default function RegisterPage() {
                         <div className="form-group">
                             <label className="form-label">Role</label>
                             <select id="reg-role" name="role" className="form-select" value={form.role} onChange={handleChange}>
-                                <option value="user">👤 Participant (Team Leader)</option>
-                                <option value="organizer">🏛️ Organizer</option>
+                                <option value="user">Participant (Team Leader)</option>
+                                <option value="organizer">Organizer</option>
                             </select>
                         </div>
 
@@ -139,10 +216,25 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
+                        {/* Cloudflare Turnstile CAPTCHA */}
+                        <div style={{ margin: '16px 0', display: 'flex', justifyContent: 'center' }}>
+                            <div ref={turnstileRef}></div>
+                        </div>
+
                         <button id="reg-submit" type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{ marginTop: 8, opacity: 1, visibility: 'visible' }}>
                             {loading ? 'Processing...' : 'Create Account'}
                         </button>
                     </form>
+
+                    {/* Divider */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+                        <div style={{ flex: 1, height: 1, background: 'var(--border)' }}></div>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>or sign up with</span>
+                        <div style={{ flex: 1, height: 1, background: 'var(--border)' }}></div>
+                    </div>
+
+                    {/* Google Sign-Up Button */}
+                    <div id="google-signup-btn-register" style={{ display: 'flex', justifyContent: 'center', minHeight: 44 }}></div>
 
                     <div className="auth-footer">
                         Already have an account?{' '}

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import API from '../api';
 import Navbar from '../components/Navbar';
 import InteractiveBackground from '../components/InteractiveBackground';
-import { Upload, CheckCircle, AlertTriangle, Clock, Copy, Download } from 'lucide-react';
+import { Upload, CheckCircle, AlertTriangle, Clock, Copy, Download, Shield, CloudUpload } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -125,7 +125,7 @@ export default function SubmitPage() {
             <InteractiveBackground />
             <Navbar />
             <div style={{ textAlign: 'center', padding: 80 }}>
-                <div style={{ fontSize: '2rem', marginBottom: 12 }}>⚠️</div>
+                <AlertTriangle size={28} color="var(--accent-amber)" style={{ marginBottom: 12 }} />
                 <div style={{ color: 'var(--text-secondary)' }}>{error || 'Event not found'}</div>
                 <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => navigate('/events')}>Back to Events</button>
             </div>
@@ -162,7 +162,7 @@ export default function SubmitPage() {
                         <div>
                             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Status</div>
                             <span className={`status-badge ${expired ? 'status-expired' : 'status-active'}`}>
-                                {expired ? '⏰ Submissions Closed' : '✅ Open for Submissions'}
+                                {expired ? 'Submissions Closed' : 'Open for Submissions'}
                             </span>
                         </div>
                         <div>
@@ -213,7 +213,7 @@ export default function SubmitPage() {
                                             border: '1px solid rgba(14, 165, 233, 0.2)', 
                                             borderRadius: '12px', 
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' 
-                                        }}>🛡️</div>
+                                        }}><Shield size={20} /></div>
                                         <div>
                                             <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, letterSpacing: '3px', textTransform: 'uppercase', color: '#38bdf8' }}>HackNova</h2>
                                             <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', marginTop: '4px' }}>Immutable Submission Record</div>
@@ -295,7 +295,7 @@ export default function SubmitPage() {
                         <div className="card" style={{ marginBottom: 20 }}>
                             <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 20 }}>📁 Upload .git Folder</div>
 
-                            {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>⚠️ {error}</div>}
+                            {error && <div className="alert alert-error" style={{ marginBottom: 16 }}><AlertTriangle size={14} /> {error}</div>}
 
                             {/* Upload Zone */}
                             <div
@@ -314,7 +314,7 @@ export default function SubmitPage() {
                                     </div>
                                 ) : (
                                     <div className="animate-scale-in">
-                                        <span className="upload-icon">☁️</span>
+                                        <CloudUpload size={28} color="var(--text-muted)" />
                                         <div className="upload-title">Drop your .git folder ZIP here</div>
                                         <div className="upload-subtitle">Compress your .git folder as ZIP · Max 200MB</div>
                                         <div style={{ marginTop: 16, fontSize: '0.78rem', color: 'var(--text-muted)' }}>

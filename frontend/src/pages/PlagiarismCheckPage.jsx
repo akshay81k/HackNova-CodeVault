@@ -109,30 +109,32 @@ export default function PlagiarismCheckPage() {
       <div className="dashboard-main">
 
         {/* Back button + header */}
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 20 }}>
           <button
-            className="btn btn-ghost"
-            style={{ marginBottom: 12, paddingLeft: 0, gap: 6 }}
+            className="btn btn-breadcrumb"
             onClick={() => navigate('/organizer')}
           >
-            <ArrowLeft size={16} /> Back to Dashboard
+            <ArrowLeft size={14} /> Back to Dashboard
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 'var(--radius-md)',
-              background: 'rgba(139,92,246,0.12)', display: 'flex',
-              alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Search size={20} color="var(--accent-purple)" />
-            </div>
-            <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.2 }}>
-                Plagiarism Detection
-              </h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 2 }}>
-                Token-based code similarity analysis · Compare any two team submissions
-              </p>
-            </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '18px',
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(217,70,239,0.15) 100%)',
+            border: '1px solid rgba(139,92,246,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
+          }}>
+            <Search size={28} color="var(--accent-purple)" />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #fff 0%, #d8b4fe 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Plagiarism Detection
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', marginTop: 4 }}>
+              Advanced token-based similarity analysis for secure hackathon integrity.
+            </p>
           </div>
         </div>
 

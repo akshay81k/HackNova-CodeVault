@@ -98,7 +98,7 @@ export default function EventsPage() {
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <span className={`status-badge ${expired ? 'status-expired' : 'status-active'}`}>
-                                            {expired ? '⏰ Expired' : '✅ Active'}
+                                            {expired ? 'Expired' : 'Active'}
                                         </span>
                                         {ev.tags?.slice(0, 2).map(t => <span key={t} className="tag">{t}</span>)}
                                     </div>

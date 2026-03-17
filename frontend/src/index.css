@@ -420,10 +420,15 @@ code, .mono { font-family: var(--font-mono); }
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all var(--transition);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+  transition: transform 0.1s ease;
 }
 
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -434,8 +439,9 @@ code, .mono { font-family: var(--font-mono); }
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
 }
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.5);
+  filter: brightness(1.1);
 }
 
 .btn-secondary {
@@ -445,7 +451,9 @@ code, .mono { font-family: var(--font-mono); }
 }
 .btn-secondary:hover:not(:disabled) {
   border-color: var(--border-hover);
-  background: rgba(255,255,255,0.04);
+  background: rgba(37, 99, 235, 0.06);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 .btn-danger {
@@ -455,6 +463,8 @@ code, .mono { font-family: var(--font-mono); }
 }
 .btn-danger:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239,68,68,0.2);
 }
 
 .btn-ghost {
@@ -462,11 +472,72 @@ code, .mono { font-family: var(--font-mono); }
   color: var(--text-secondary);
   padding: 8px 12px;
 }
-.btn-ghost:hover:not(:disabled) { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.btn-ghost:hover:not(:disabled) { color: var(--text-primary); background: rgba(255,255,255,0.05); transform: translateY(-1px); }
 
 .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
 .btn-lg { padding: 14px 28px; font-size: 1rem; }
 .btn-full { width: 100%; }
+
+/* Premium Dashboard Action Buttons */
+.btn-premium-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.btn-premium-purple:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.6);
+  filter: brightness(1.1);
+}
+
+.btn-premium-blue {
+  background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.btn-premium-blue:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.6);
+  filter: brightness(1.1);
+}
+
+/* Breadcrumb / Back Button ghost style */
+.btn-breadcrumb {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  border-radius: 100px;
+  font-weight: 500;
+}
+.btn-breadcrumb:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-blue-light);
+  color: var(--text-primary);
+  transform: translateX(-3px);
+}
+
+/* Pulse animation for premium buttons */
+@keyframes premium-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+}
+
+.pulse-purple {
+  animation: premium-pulse 2s infinite;
+}
+
+/* ===== Hidden Scrollbar Utility ===== */
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hidden::-webkit-scrollbar { display: none; }
+
 
 /* ===== Cards ===== */
 .card {
@@ -501,8 +572,8 @@ code, .mono { font-family: var(--font-mono); }
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .form-label {
@@ -518,12 +589,32 @@ code, .mono { font-family: var(--font-mono); }
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 11px 16px;
-  font-size: 0.9rem;
+  padding: 13px 18px;
+  font-size: 0.95rem;
   color: var(--text-primary);
   font-family: var(--font-sans);
   transition: all var(--transition);
   outline: none;
+  color-scheme: dark; /* Ensures default native UI like scrollbars/calendars use dark mode */
+}
+
+/* Custom realistic calendar icon styling with blue glow */
+.form-input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.form-input[type="date"]::-webkit-calendar-picker-indicator,
+.form-input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  /* Apply blue color manually via filters and add glow */
+  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg) brightness(118%) contrast(119%) drop-shadow(0 0 5px rgba(59, 130, 246, 0.8));
+  transition: all 0.3s ease;
+}
+
+.form-input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+.form-input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.form-input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg) brightness(140%) contrast(119%) drop-shadow(0 0 8px rgba(59, 130, 246, 1));
+  transform: scale(1.1);
 }
 
 .form-input:focus, .form-textarea:focus, .form-select:focus {
@@ -575,7 +666,7 @@ code, .mono { font-family: var(--font-mono); }
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: 40px;
+  padding: 48px;
   box-shadow: var(--shadow-lg);
   position: relative;
   z-index: 1;
@@ -710,6 +801,23 @@ code, .mono { font-family: var(--font-mono); }
   overflow-x: auto;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+.table-wrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 table {

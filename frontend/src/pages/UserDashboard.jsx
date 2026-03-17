@@ -4,7 +4,7 @@ import API from '../api';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import InteractiveBackground from '../components/InteractiveBackground';
-import { FileText, Clock, CheckCircle, Search, ExternalLink } from 'lucide-react';
+import { FileText, Clock, CheckCircle, Search, ExternalLink, Copy } from 'lucide-react';
 
 export default function UserDashboard() {
     const { user } = useAuth();
@@ -171,7 +171,7 @@ export default function UserDashboard() {
                                                             </div>
                                                         </div>
                                                         <span className={`status-badge ${s.submittedBeforeDeadline ? 'status-active' : 'status-expired'}`}>
-                                                            {s.submittedBeforeDeadline ? '✅ On-time' : '❌ Late'}
+                                                            {s.submittedBeforeDeadline ? 'On-time' : 'Late'}
                                                         </span>
                                                     </div>
 
@@ -182,7 +182,7 @@ export default function UserDashboard() {
                                                             </div>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                                 <span className="mono" style={{ fontSize: '0.95rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>{s.verificationId}</span>
-                                                                <button className="btn btn-ghost btn-sm" onClick={() => copyToClipboard(s.verificationId)} title="Copy">📋</button>
+                                                                <button className="btn btn-ghost btn-sm" onClick={() => copyToClipboard(s.verificationId)} title="Copy"><Copy size={14} /></button>
                                                             </div>
                                                         </div>
                                                         <div>
