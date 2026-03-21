@@ -300,7 +300,7 @@ export default function SubmitPage() {
                     /* Upload Form */
                     <form onSubmit={handleSubmit}>
                         <div className="card" style={{ marginBottom: 20 }}>
-                            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 20 }}>📁 Upload .git Folder</div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 20 }}>📁 Upload zip Folder</div>
 
                             {error && <div className="alert alert-error" style={{ marginBottom: 16 }}><AlertTriangle size={14} /> {error}</div>}
 
@@ -322,7 +322,7 @@ export default function SubmitPage() {
                                 ) : (
                                     <div className="animate-scale-in">
                                         <CloudUpload size={28} color="var(--text-muted)" />
-                                        <div className="upload-title">Drop your .git folder ZIP here</div>
+                                        <div className="upload-title">Drop your project ZIP here</div>
                                         <div className="upload-subtitle">Compress your .git folder as ZIP · Max 200MB</div>
                                         <div style={{ marginTop: 16, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                                             Method: <code>zip -r submission.zip .git/</code>
