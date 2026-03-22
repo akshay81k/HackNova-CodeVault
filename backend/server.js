@@ -44,20 +44,29 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Connect to MongoDB and start server
 const PORT = process.env.PORT || 5000;
+const mongoUri = process.env.MONGO_URI || process.env.MONGO_CONNECTION_STRING;
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('✅ MongoDB connected');
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 HackNova API running`);
+if (!mongoUri) {
+  console.error('❌ FATAL: Neither MONGO_URI nor MONGO_CONNECTION_STRING is defined in environment variables.');
+} else {
+  mongoose.connect(mongoUri)
+    .then(() => {
+      console.log('✅ MongoDB connected');
+      // On Vercel, app.listen isn't strictly necessary as it injects its own listener,
+      // but it's safe to keep for local dev.
+      if (process.env.NODE_ENV !== 'production') {
+        const server = app.listen(PORT, () => {
+          console.log(`🚀 HackNova API running on http://localhost:${PORT}`);
+        });
+        server.timeout = 600000;
+      }
+    })
+    .catch((err) => {
+      console.error('❌ MongoDB connection error:', err.message);
+      // Removed process.exit(1) to prevent Vercel 500 Invocation crashes on cold start.
     });
-    server.timeout = 600000; // 10 minutes for long plagiarism checks
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err.message);
-    process.exit(1);
-  });
+}
 
+// Required for Vercel properly routing to your Express app
 module.exports = app;
