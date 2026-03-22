@@ -14,7 +14,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: process.env.CLIENT_URL,
   credentials: true
 }));
 app.use(express.json());
@@ -51,7 +51,7 @@ mongoose.connect(process.env.MONGO_CONNECTION_STRING)
   .then(() => {
     console.log('✅ MongoDB connected');
     const server = app.listen(PORT, () => {
-      console.log(`🚀 HackNova API running on http://localhost:${PORT}`);
+      console.log(`🚀 HackNova API running`);
     });
     server.timeout = 600000; // 10 minutes for long plagiarism checks
   })
